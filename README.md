@@ -1,0 +1,2 @@
+# sgc-app
+Application/frontend
