@@ -229,6 +229,9 @@ export default function LoginPage() {
                     required
                   />
                 </div>
+                <div style={{textAlign: 'right', marginTop: '4px'}}>
+                  <a href="/forgot-password" style={{fontSize: '0.8rem', color: 'var(--terracotta)', textDecoration: 'none'}}>Forgot password?</a>
+                </div>
                 <button className="auth-btn" type="submit" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </button>
