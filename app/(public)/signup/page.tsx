@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
+  const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +20,10 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+        emailRedirectTo: `${window.location.origin}/auth/callback` ,
+        data: {
+          first_name: firstName, 
+        }
       }
     });
     if (error) {
@@ -75,6 +79,17 @@ export default function SignupPage() {
             <>
               {error && <div className="auth-error">{error}</div>}
               <form onSubmit={handleSignup}>
+                <div className="auth-field">
+                  <label className="auth-label">First Name</label>
+                  <input
+                    className="auth-input"
+                    type="text"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    placeholder="Your first name"
+                    required
+                  />
+                </div>
                 <div className="auth-field">
                   <label className="auth-label">Email</label>
                   <input className="auth-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" required />

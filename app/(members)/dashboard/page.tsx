@@ -17,6 +17,7 @@ export default async function DashboardPage() {
   };
 
   const tier = tierLabels[access.tier ?? "story"];
+  const firstName = user.user_metadata?.first_name ?? "collector";
 
   return (
     <>
@@ -280,7 +281,7 @@ export default async function DashboardPage() {
           <div className="dash-welcome">
             <p className="dash-welcome-eyebrow">Member Dashboard</p>
             <h1 className="dash-welcome-title">
-              Welcome back, <em>collector.</em>
+              Welcome back, <em>{firstName}.</em>
             </h1>
             <p className="dash-welcome-sub">
               You're signed in as {user.email}
