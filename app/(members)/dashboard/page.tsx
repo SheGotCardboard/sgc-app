@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccess } from "@/lib/access";
+import Nav from "@/components/layout/Nav";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -22,84 +23,12 @@ export default async function DashboardPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Caveat:wght@700&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-          --terracotta: #d97757;
-          --terracotta-deep: #c4653f;
-          --slate: #3d3935;
-          --slate-soft: #5a5550;
-          --slate-ghost: #9a948e;
-          --cream: #faf6f1;
-          --forest: #3d6b4a;
-          --forest-light: #6b9d7a;
-          --border: rgba(61,57,53,0.1);
-        }
-        .dash-page {
-          min-height: 100vh;
-          background: var(--cream);
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          color: var(--slate);
-        }
-        /* Nav */
-        .dash-nav {
-          background: white;
-          border-bottom: 1px solid var(--border);
-          padding: 0 48px;
-          display: flex;
-          align-items: center;
-          height: 64px;
-          gap: 24px;
-        }
-        .dash-logo {
-          font-family: 'Caveat', cursive;
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: var(--slate);
-          text-decoration: none;
-        }
-        .dash-logo span { color: var(--terracotta); }
-        .dash-nav-links {
-          display: flex;
-          gap: 4px;
-          margin-left: 16px;
-        }
-        .dash-nav-link {
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: var(--slate-ghost);
-          text-decoration: none;
-          padding: 6px 12px;
-          border-radius: 6px;
-          transition: all 0.15s;
-        }
-        .dash-nav-link:hover { background: var(--cream); color: var(--slate); }
-        .dash-nav-link.active { color: var(--slate); background: var(--cream); }
-        .dash-nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-        .dash-email { font-size: 0.8rem; color: var(--slate-ghost); }
-        .dash-signout {
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: var(--slate-ghost);
-          text-decoration: none;
-          padding: 6px 12px;
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          transition: all 0.15s;
-          background: white;
-          cursor: pointer;
-        }
-        .dash-signout:hover { border-color: var(--terracotta); color: var(--terracotta); }
-        /* Main */
         .dash-main {
           max-width: 1100px;
           margin: 0 auto;
           padding: 48px;
         }
-        /* Welcome */
-        .dash-welcome {
-          margin-bottom: 40px;
-        }
+        .dash-welcome { margin-bottom: 40px; }
         .dash-welcome-eyebrow {
           font-size: 0.8rem;
           font-weight: 700;
@@ -109,21 +38,17 @@ export default async function DashboardPage() {
           margin-bottom: 8px;
         }
         .dash-welcome-title {
-          font-family: 'DM Serif Display', serif;
+          font-family: var(--font-display);
           font-size: 2.2rem;
           font-weight: 400;
           color: var(--slate);
           margin-bottom: 8px;
         }
         .dash-welcome-title em { font-style: italic; color: var(--terracotta); }
-        .dash-welcome-sub {
-          font-size: 0.95rem;
-          color: var(--slate-soft);
-        }
-        /* Tier card */
+        .dash-welcome-sub { font-size: 0.95rem; color: var(--slate-soft); }
         .tier-card {
-          background: white;
-          border-radius: 14px;
+          background: var(--white);
+          border-radius: var(--radius-lg);
           padding: 24px 28px;
           border: 1px solid var(--border);
           border-left: 4px solid var(--tier-color, var(--terracotta));
@@ -131,43 +56,38 @@ export default async function DashboardPage() {
           display: flex;
           align-items: center;
           gap: 20px;
-          box-shadow: 0 1px 6px rgba(61,57,53,0.05);
+          box-shadow: var(--shadow-sm);
         }
         .tier-card-info { flex: 1; }
         .tier-card-name {
-          font-family: 'DM Serif Display', serif;
+          font-family: var(--font-display);
           font-size: 1.4rem;
           color: var(--slate);
           margin-bottom: 4px;
         }
-        .tier-card-tagline {
-          font-size: 0.875rem;
-          color: var(--slate-soft);
-          font-style: italic;
-        }
+        .tier-card-tagline { font-size: 0.875rem; color: var(--slate-soft); font-style: italic; }
         .tier-card-badge {
           font-size: 0.75rem;
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
           padding: 4px 12px;
-          border-radius: 100px;
+          border-radius: var(--radius-pill);
           background: var(--cream);
           color: var(--slate-soft);
         }
         .tier-upgrade-btn {
           font-size: 0.85rem;
           font-weight: 700;
-          color: white;
+          color: var(--white);
           background: var(--terracotta);
           padding: 10px 20px;
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           text-decoration: none;
           transition: background 0.2s;
           white-space: nowrap;
         }
         .tier-upgrade-btn:hover { background: var(--terracotta-deep); }
-        /* Grid */
         .dash-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -175,11 +95,11 @@ export default async function DashboardPage() {
           margin-bottom: 32px;
         }
         .dash-card {
-          background: white;
-          border-radius: 14px;
+          background: var(--white);
+          border-radius: var(--radius-lg);
           padding: 24px 28px;
           border: 1px solid var(--border);
-          box-shadow: 0 1px 6px rgba(61,57,53,0.05);
+          box-shadow: var(--shadow-sm);
           text-decoration: none;
           color: inherit;
           display: block;
@@ -187,13 +107,9 @@ export default async function DashboardPage() {
         }
         .dash-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 4px 16px rgba(61,57,53,0.08);
+          box-shadow: var(--shadow-md);
         }
-        .dash-card.locked {
-          opacity: 0.5;
-          cursor: default;
-          pointer-events: none;
-        }
+        .dash-card.locked { opacity: 0.5; cursor: default; pointer-events: none; }
         .dash-card-header {
           display: flex;
           align-items: center;
@@ -206,27 +122,22 @@ export default async function DashboardPage() {
           color: var(--slate-ghost);
           background: var(--cream);
           padding: 3px 8px;
-          border-radius: 4px;
+          border-radius: var(--radius-sm);
           font-weight: 600;
         }
         .dash-card-title {
-          font-family: 'DM Serif Display', serif;
+          font-family: var(--font-display);
           font-size: 1.15rem;
           color: var(--slate);
           margin-bottom: 6px;
         }
-        .dash-card-desc {
-          font-size: 0.85rem;
-          color: var(--slate-soft);
-          line-height: 1.5;
-        }
-        /* Benefits list */
+        .dash-card-desc { font-size: 0.85rem; color: var(--slate-soft); line-height: 1.5; }
         .benefits-section {
-          background: white;
-          border-radius: 14px;
+          background: var(--white);
+          border-radius: var(--radius-lg);
           padding: 24px 28px;
           border: 1px solid var(--border);
-          box-shadow: 0 1px 6px rgba(61,57,53,0.05);
+          box-shadow: var(--shadow-sm);
         }
         .benefits-title {
           font-size: 0.8rem;
@@ -249,46 +160,21 @@ export default async function DashboardPage() {
         .benefit-no { font-size: 1rem; color: rgba(61,57,53,0.15); }
         .benefit-label { flex: 1; color: var(--slate-soft); }
         .benefit-label.active { color: var(--slate); font-weight: 500; }
-        .benefit-tier {
-          font-size: 0.7rem;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          color: var(--slate-ghost);
-        }
+        .benefit-tier { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate-ghost); }
       `}</style>
 
-      <div className="dash-page">
-        {/* Nav */}
-        <nav className="dash-nav">
-          <a href="/" className="dash-logo">She Got <span>Cardboard</span></a>
-          <div className="dash-nav-links">
-            <a href="/dashboard" className="dash-nav-link active">Dashboard</a>
-            <a href="/" className="dash-nav-link">Editorial</a>
-            <a href="/membership" className="dash-nav-link">Membership</a>
-          </div>
-          <div className="dash-nav-right">
-            <span className="dash-email">{user.email}</span>
-            <form action="/api/auth/signout" method="post">
-              <button type="submit" className="dash-signout">Sign out</button>
-            </form>
-          </div>
-        </nav>
+      <div className="sgc-page">
+        <Nav variant="member" activePage="dashboard" />
 
         <main className="dash-main">
-
-          {/* Welcome */}
           <div className="dash-welcome">
             <p className="dash-welcome-eyebrow">Member Dashboard</p>
             <h1 className="dash-welcome-title">
               Welcome back, <em>{firstName}.</em>
             </h1>
-            <p className="dash-welcome-sub">
-              You're signed in as {user.email}
-            </p>
+            <p className="dash-welcome-sub">You're signed in as {user.email}</p>
           </div>
 
-          {/* Tier card */}
           <div className="tier-card" style={{"--tier-color": tier.color} as React.CSSProperties}>
             <div className="tier-card-info">
               <div className="tier-card-name">{tier.name}</div>
@@ -303,7 +189,6 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          {/* Content grid */}
           <div className="dash-grid">
             <a href="/" className="dash-card">
               <div className="dash-card-header">
@@ -358,12 +243,11 @@ export default async function DashboardPage() {
             </a>
           </div>
 
-          {/* Benefits summary */}
           <div className="benefits-section">
             <div className="benefits-title">Your Benefits</div>
             <div className="benefit-row">
               <span className="benefit-check">✓</span>
-              <span className={`benefit-label active`}>Full editorial access</span>
+              <span className="benefit-label active">Full editorial access</span>
               <span className="benefit-tier">All tiers</span>
             </div>
             <div className="benefit-row">
@@ -397,7 +281,6 @@ export default async function DashboardPage() {
               <span className="benefit-tier">Legacy</span>
             </div>
           </div>
-
         </main>
       </div>
     </>

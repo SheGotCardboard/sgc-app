@@ -1,1 +1,370 @@
 @import "tailwindcss";
+
+/* ─────────────────────────────────────────────
+   SGC DESIGN TOKENS
+   Single source of truth for all brand values
+───────────────────────────────────────────── */
+
+:root {
+  /* Brand colors */
+  --terracotta:        #d97757;
+  --terracotta-deep:   #c4653f;
+  --terracotta-blush:  #f0cbb8;
+  --terracotta-mist:   rgba(217,119,87,0.08);
+
+  --slate:             #3d3935;
+  --slate-soft:        #5a5550;
+  --slate-ghost:       #9a948e;
+
+  --forest:            #3d6b4a;
+  --forest-light:      #6b9d7a;
+  --forest-mist:       #d4e8da;
+
+  --lavender:          #9b88c4;
+  --lavender-soft:     #b5a3d8;
+  --lavender-mist:     #e8e3f5;
+
+  --gold:              #e8b44c;
+  --gold-mist:         #fdf3d9;
+
+  --cream:             #faf6f1;
+  --warm-white:        #fdfaf7;
+  --white:             #ffffff;
+
+  /* Semantic */
+  --border:            rgba(61,57,53,0.1);
+  --border-strong:     rgba(61,57,53,0.2);
+  --shadow-sm:         0 1px 6px rgba(61,57,53,0.05);
+  --shadow-md:         0 4px 24px rgba(61,57,53,0.08);
+  --shadow-lg:         0 8px 32px rgba(61,57,53,0.1);
+
+  /* Tier colors */
+  --tier-story:        #6b9d7a;
+  --tier-chronicle:    #b5a3d8;
+  --tier-legacy:       #e8b44c;
+
+  /* Typography */
+  --font-display:      'DM Serif Display', Georgia, serif;
+  --font-body:         'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-logo:         'Caveat', cursive;
+  --font-mono:         'JetBrains Mono', monospace;
+
+  /* Spacing scale */
+  --space-xs:          4px;
+  --space-sm:          8px;
+  --space-md:          16px;
+  --space-lg:          24px;
+  --space-xl:          32px;
+  --space-2xl:         48px;
+  --space-3xl:         72px;
+
+  /* Border radius */
+  --radius-sm:         6px;
+  --radius-md:         10px;
+  --radius-lg:         14px;
+  --radius-xl:         20px;
+  --radius-pill:       100px;
+
+  /* Nav height */
+  --nav-height:        64px;
+}
+
+/* ─────────────────────────────────────────────
+   BASE RESET
+───────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--slate);
+  background: var(--cream);
+  line-height: 1.6;
+}
+
+/* ─────────────────────────────────────────────
+   TYPOGRAPHY BASE
+───────────────────────────────────────────── */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.15;
+  color: var(--slate);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ─────────────────────────────────────────────
+   SHARED COMPONENT STYLES
+   Used across multiple pages
+───────────────────────────────────────────── */
+
+/* Page wrapper */
+.sgc-page {
+  min-height: 100vh;
+  background: var(--cream);
+  font-family: var(--font-body);
+  color: var(--slate);
+}
+
+/* Nav */
+.sgc-nav {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  height: var(--nav-height);
+  gap: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.sgc-nav-logo {
+  font-family: var(--font-logo);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--slate);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.sgc-nav-logo span { color: var(--terracotta); }
+
+.sgc-nav-links {
+  display: flex;
+  gap: 4px;
+  margin-left: 16px;
+}
+
+.sgc-nav-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--slate-ghost);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+
+.sgc-nav-link:hover,
+.sgc-nav-link.active {
+  background: var(--cream);
+  color: var(--slate);
+}
+
+.sgc-nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Buttons */
+.sgc-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sgc-btn-primary {
+  background: var(--terracotta);
+  color: var(--white);
+}
+.sgc-btn-primary:hover { background: var(--terracotta-deep); transform: translateY(-1px); }
+
+.sgc-btn-ghost {
+  background: transparent;
+  color: var(--slate-soft);
+  border: 1.5px solid var(--border);
+}
+.sgc-btn-ghost:hover { border-color: var(--slate-soft); color: var(--slate); }
+
+.sgc-btn-outline-terracotta {
+  background: transparent;
+  color: var(--terracotta);
+  border: 1.5px solid rgba(217,119,87,0.4);
+}
+.sgc-btn-outline-terracotta:hover { background: var(--terracotta-mist); }
+
+.sgc-btn-full { width: 100%; display: block; padding: 13px 20px; }
+
+.sgc-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Cards */
+.sgc-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Auth pages shared */
+.sgc-auth-page {
+  min-height: 100vh;
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.sgc-auth-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-md);
+}
+
+.sgc-auth-logo {
+  font-family: var(--font-logo);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--slate);
+  margin-bottom: 1.5rem;
+  text-align: center;
+  display: block;
+}
+.sgc-auth-logo span { color: var(--terracotta); }
+
+.sgc-auth-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--slate);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.sgc-auth-subtitle {
+  font-size: 0.875rem;
+  color: var(--slate-ghost);
+  text-align: center;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.sgc-auth-field { margin-bottom: 1rem; }
+
+.sgc-auth-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--slate-soft);
+  margin-bottom: 0.375rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sgc-auth-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--slate);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.sgc-auth-input:focus { border-color: var(--terracotta); }
+.sgc-auth-input::placeholder { color: var(--slate-ghost); }
+
+.sgc-auth-error {
+  background: rgba(196,101,63,0.08);
+  border: 1px solid rgba(196,101,63,0.2);
+  color: var(--terracotta-deep);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.sgc-auth-success {
+  background: rgba(61,107,74,0.08);
+  border: 1px solid rgba(61,107,74,0.2);
+  color: var(--forest);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.sgc-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1.25rem 0;
+}
+.sgc-auth-divider-line { flex: 1; height: 1px; background: var(--border); }
+.sgc-auth-divider-text { font-size: 0.75rem; color: var(--slate-ghost); }
+
+.sgc-auth-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--slate-ghost);
+}
+.sgc-auth-footer a { color: var(--terracotta); font-weight: 600; }
+
+/* Section utilities */
+.sgc-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slate-ghost);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.sgc-section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  color: var(--slate);
+  margin-bottom: 12px;
+}
+
+.sgc-section-title em {
+  font-style: italic;
+  color: var(--terracotta);
+}
+
+/* Divider */
+.sgc-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1.5rem auto;
+}
+.sgc-divider-line { flex: 1; height: 1px; background: var(--terracotta-blush); }
+.sgc-divider-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--terracotta); opacity: 0.5; }
+
+/* Font imports */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Caveat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
