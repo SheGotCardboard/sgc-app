@@ -135,14 +135,27 @@ a {
 }
 
 .sgc-nav-logo {
-  font-family: var(--font-logo);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--slate-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
   text-decoration: none;
   flex-shrink: 0;
 }
-.sgc-nav-logo span { color: var(--terracotta); }
+.sgc-nav-logo-she {
+  font-family: var(--font-logo);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--terracotta);
+  line-height: 1;
+}
+.sgc-nav-logo-sub {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--slate-soft);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
 
 .sgc-nav-links {
   display: flex;
