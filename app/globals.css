@@ -138,11 +138,10 @@ a {
   font-family: var(--font-logo);
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--slate);
+  color: var(--slate-soft);
   text-decoration: none;
   flex-shrink: 0;
 }
-
 .sgc-nav-logo span { color: var(--terracotta); }
 
 .sgc-nav-links {

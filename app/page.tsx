@@ -46,21 +46,13 @@ export default async function HomePage() {
   return (
     <>
       <style>{`
-        .hero {
-          background: linear-gradient(160deg, var(--cream) 0%, var(--warm-white) 100%);
+       .hero {
+          background: var(--soft-cream);
           padding: 80px 48px 72px;
           position: relative;
           overflow: hidden;
         }
-        .hero::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background:
-            radial-gradient(ellipse 70% 60% at 10% 50%, rgba(217,119,87,0.07) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 70% at 90% 30%, rgba(61,107,74,0.05) 0%, transparent 60%);
-          pointer-events: none;
-        }
+        
         .hero-inner {
           max-width: 1100px;
           margin: 0 auto;
@@ -183,8 +175,8 @@ export default async function HomePage() {
                 Player spotlights, card deep dives, and the stories behind the women whose names belong on cardboard. Every week, one athlete. Always her story first.
               </p>
               <div className="hero-actions">
-                <a href="/membership" className="sgc-btn sgc-btn-primary">Join SGC →</a>
-                <a href="#spotlights" className="sgc-btn sgc-btn-ghost">Read the latest</a>
+                <a href="/membership" className="sgc-btn sgc-btn-primary">Join Our Community</a>
+                <a href="/players" className="sgc-btn sgc-btn-ghost">Meet the Players</a>
               </div>
             </div>
             <div className="hero-visual">
@@ -216,7 +208,7 @@ export default async function HomePage() {
         </section>
 
         {/* PLAYER SPOTLIGHT */}
-        <div id="spotlights">
+        <div id="spotlights"  style={{background: 'var(--terracotta-blush)'}}>
           <div className="section-divider" />
           <div className="home-section">
             <div className="section-kicker">⭐ Player Spotlight</div>
@@ -246,7 +238,7 @@ export default async function HomePage() {
         </div>
 
         {/* SGC CELEBRATES */}
-        <div style={{background: 'rgba(155,136,196,0.04)'}}>
+        <div style={{background: 'var(--lavender-mist)'}}>
           <div className="section-divider" />
           <div className="home-section">
             <div className="section-kicker lavender">🏆 SGC Celebrates</div>
@@ -276,7 +268,7 @@ export default async function HomePage() {
         </div>
 
         {/* COLLECTING 101 */}
-        <div>
+        <div style={{background: 'var(--forest-mist)'}}>
           <div className="section-divider" />
           <div className="home-section">
             <div className="section-kicker forest">📚 Collecting 101</div>

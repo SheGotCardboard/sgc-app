@@ -12,7 +12,7 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
   if (variant === "member") {
     return (
       <nav className="sgc-nav">
-        <a href="/" className="sgc-nav-logo">She Got <span>Cardboard</span></a>
+        <a href="/" className="sgc-nav-logo"><span>She</span> got cardboard</a>
         <div className="sgc-nav-links">
           <a href="/dashboard" className={`sgc-nav-link${activePage === "dashboard" ? " active" : ""}`}>Dashboard</a>
           <a href="/" className={`sgc-nav-link${activePage === "editorial" ? " active" : ""}`}>Editorial</a>
