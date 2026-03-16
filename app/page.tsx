@@ -14,28 +14,38 @@ export default async function HomePage() {
   const supabase = await createClient();
   const now = new Date().toISOString();
 
+  // Get ed_type UUIDs first
+  const { data: edTypesRaw } = await supabase
+    .from("ed_type_lkp")
+    .select("ed_type_id, value");
+
+  const edTypes = (edTypesRaw ?? []) as { ed_type_id: string; value: string }[];
+
+  const spotlightTypeId = edTypes.find(t => t.value === "spotlight")?.ed_type_id;
+  const celebratesTypeId = edTypes.find(t => t.value === "celebrates")?.ed_type_id;
+  const collectTypeId = edTypes.find(t => t.value === "collect")?.ed_type_id;
   const [spotlights, celebrates, collecting] = await Promise.all([
-    supabase
+    spotlightTypeId ? supabase
       .from("ed_calendar")
-      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date, ed_type_id(value)")
+      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date")
       .lte("free_publish_date", now)
-      .eq("ed_type_id.value", "spotlight")
+      .eq("ed_type_id", spotlightTypeId)
       .order("publish_date", { ascending: false })
-      .limit(3),
-    supabase
+      .limit(3) : { data: [] },
+    celebratesTypeId ? supabase
       .from("ed_calendar")
-      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date, ed_type_id(value)")
+      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date")
       .lte("free_publish_date", now)
-      .eq("ed_type_id.value", "celebrates")
+      .eq("ed_type_id", celebratesTypeId)
       .order("publish_date", { ascending: false })
-      .limit(3),
-    supabase
+      .limit(3) : { data: [] },
+    collectTypeId ? supabase
       .from("ed_calendar")
-      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date, ed_type_id(value)")
+      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date")
       .lte("publish_date", now)
-      .eq("ed_type_id.value", "collect")
+      .eq("ed_type_id", collectTypeId)
       .order("publish_date", { ascending: false })
-      .limit(3),
+      .limit(3) : { data: [] },
   ]);
 
   const spotlightItems = (spotlights.data ?? []) as EdItem[];
