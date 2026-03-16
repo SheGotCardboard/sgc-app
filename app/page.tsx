@@ -2,13 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import Nav from "@/components/layout/Nav";
 
 type EdItem = {
-  ed_cal_id: number;
+  ed_cal_id: string;
   title: string;
-  teaser: string | null;
+  excerpt: string | null;
   slug: string;
   publish_date: string;
   free_publish_date: string | null;
-  ed_type_id: number;
 };
 
 export default async function HomePage() {
@@ -18,23 +17,23 @@ export default async function HomePage() {
   const [spotlights, celebrates, collecting] = await Promise.all([
     supabase
       .from("ed_calendar")
-      .select("ed_cal_id, title, teaser, slug, publish_date, free_publish_date, ed_type_id")
+      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date, ed_type_id(value)")
       .lte("free_publish_date", now)
-      .eq("ed_type_id", 1)
+      .eq("ed_type_id.value", "spotlight")
       .order("publish_date", { ascending: false })
       .limit(3),
     supabase
       .from("ed_calendar")
-      .select("ed_cal_id, title, teaser, slug, publish_date, free_publish_date, ed_type_id")
+      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date, ed_type_id(value)")
       .lte("free_publish_date", now)
-      .eq("ed_type_id", 2)
+      .eq("ed_type_id.value", "celebrates")
       .order("publish_date", { ascending: false })
       .limit(3),
     supabase
       .from("ed_calendar")
-      .select("ed_cal_id, title, teaser, slug, publish_date, free_publish_date, ed_type_id")
+      .select("ed_cal_id, title, excerpt, slug, publish_date, free_publish_date, ed_type_id(value)")
       .lte("publish_date", now)
-      .eq("ed_type_id", 3)
+      .eq("ed_type_id.value", "collect")
       .order("publish_date", { ascending: false })
       .limit(3),
   ]);
@@ -222,7 +221,7 @@ export default async function HomePage() {
                     <div className="content-card-body">
                       <div className="content-card-type">Player Spotlight</div>
                       <div className="content-card-title">{item.title}</div>
-                      {item.teaser && <p className="content-card-teaser">{item.teaser}</p>}
+                      {item.excerpt && <p className="content-card-teaser">{item.excerpt}</p>}
                     </div>
                   </a>
                 ))}
@@ -252,7 +251,7 @@ export default async function HomePage() {
                     <div className="content-card-body">
                       <div className="content-card-type lavender">SGC Celebrates</div>
                       <div className="content-card-title">{item.title}</div>
-                      {item.teaser && <p className="content-card-teaser">{item.teaser}</p>}
+                      {item.excerpt && <p className="content-card-teaser">{item.excerpt}</p>}
                     </div>
                   </a>
                 ))}
@@ -282,7 +281,7 @@ export default async function HomePage() {
                     <div className="content-card-body">
                       <div className="content-card-type forest">Collecting 101</div>
                       <div className="content-card-title">{item.title}</div>
-                      {item.teaser && <p className="content-card-teaser">{item.teaser}</p>}
+                      {item.excerpt && <p className="content-card-teaser">{item.excerpt}</p>}
                     </div>
                   </a>
                 ))}
