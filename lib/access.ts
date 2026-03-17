@@ -61,18 +61,18 @@ export async function getAccess(): Promise<AccessBenefits> {
     };
   }
 
-  // Look up active subscription by email
-   const { data: subscription } = await supabase
+  // Look up active subscription by user_id (fix: was incorrectly using email)
+  const { data: subscription } = await supabase
     .from("member_subscriptions")
     .select("tier_slug, status")
-    .eq("email", user.email!)
+    .eq("user_id", user.id)
     .in("status", ["active", "trialing"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   // Authenticated but no active subscription — Story tier (free)
-   const rawTier = (subscription as { tier_slug?: string } | null)?.tier_slug;
+  const rawTier = (subscription as { tier_slug?: string } | null)?.tier_slug;
   const tierSlug: TierSlug = (rawTier as TierSlug) ?? "story";
   const benefits = TIER_BENEFITS[tierSlug];
 

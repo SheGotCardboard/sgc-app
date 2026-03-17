@@ -33,7 +33,7 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
         </div>
         <div className="sgc-nav-right">
           <span style={{fontSize: '0.8rem', color: 'var(--slate-ghost)'}}>{user?.email}</span>
-          <form action="/api/auth/signout" method="post">
+          <form action="/auth/signout" method="post">
             <button type="submit" style={{
               fontSize: '0.8rem',
               fontWeight: 600,
