@@ -356,12 +356,10 @@ export default async function HomePage() {
         .feat-main .tile-excerpt { -webkit-line-clamp: 4 !important; }
 
         /* ── GATE BANNER ── */
-        .gate-banner {
-          margin-top: 24px;
-          background: rgba(255,255,255,0.72);
-          border: 1px solid var(--border);
-          border-radius: 14px;
-          padding: 20px 28px;
+       .gate-banner {
+          margin-top: 28px;
+          padding: 24px 0 4px;
+          border-top: 1px solid rgba(61,57,53,0.12);
           display: flex;
           align-items: center;
           justify-content: space-between;
