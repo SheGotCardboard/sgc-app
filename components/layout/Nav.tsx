@@ -90,10 +90,10 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
           </a>
           <div className="sgc-nav-pub-links">
             <a href="/" className={`sgc-nav-pub-link${activePage === "home" ? " active" : ""}`}>Home</a>
-            <a href="/players" className={`sgc-nav-pub-link${activePage === "players" ? " active" : ""}`}>Players</a>
-            <a href="/spotlights" className={`sgc-nav-pub-link${activePage === "spotlights" ? " active" : ""}`}>Spotlight</a>
-            <a href="/celebrates" className={`sgc-nav-pub-link${activePage === "celebrates" ? " active" : ""}`}>Celebrate</a>
-            <a href="/collecting" className={`sgc-nav-pub-link${activePage === "collecting" ? " active" : ""}`}>Collect</a>
+            <a href="/player" className={`sgc-nav-pub-link${activePage === "players" ? " active" : ""}`}>Players</a>
+            <a href="/spotlight" className={`sgc-nav-pub-link${activePage === "spotlights" ? " active" : ""}`}>Spotlight</a>
+            <a href="/celebrate" className={`sgc-nav-pub-link${activePage === "celebrates" ? " active" : ""}`}>Celebrate</a>
+            <a href="/collect" className={`sgc-nav-pub-link${activePage === "collecting" ? " active" : ""}`}>Collect</a>
             <a href="#" className="sgc-nav-pub-link soon">SGC Wire</a>
           </div>
           <div className="sgc-nav-pub-right">

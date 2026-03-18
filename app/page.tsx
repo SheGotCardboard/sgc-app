@@ -504,7 +504,7 @@ export default async function HomePage() {
                 <h2 className="section-head-title">Introducing&hellip;</h2>
                 <p className="section-head-desc">One athlete. Her story, her significance, the card that connects you to her legacy.</p>
               </div>
-              <a href="/spotlights" className="see-all">All Spotlights</a>
+              <a href="/spotlight" className="see-all">All Spotlights</a>
             </div>
 
             <div className="window-note">
@@ -515,7 +515,7 @@ export default async function HomePage() {
             {spotlightItems.length > 0 ? (
               <div className="tile-grid">
                 {spotlightItems.map((item) => (
-                  <a key={item.ed_cal_id} href={`/spotlights/${item.slug}`} className="teaser-tile">
+                  <a key={item.ed_cal_id} href={`/spotlight/${item.slug}`} className="teaser-tile">
                     <div className="tile-bar bar-s" />
                     <div className="tile-image img-s">
                       <div className="tile-ph">
@@ -571,7 +571,7 @@ export default async function HomePage() {
                 <h2 className="section-head-title">Stories Worth Celebrating</h2>
                 <p className="section-head-desc">Dynasties, duos, milestones, and moments. The stories that shaped women&apos;s sports — told through the cards that capture them.</p>
               </div>
-              <a href="/celebrates" className="see-all">All Celebrations</a>
+              <a href="/celebrate" className="see-all">All Celebrations</a>
             </div>
 
             <div className="window-note">
@@ -582,7 +582,7 @@ export default async function HomePage() {
             {celebratesItems.length > 0 ? (
               <div className="tile-grid">
                 {celebratesItems.map((item) => (
-                  <a key={item.ed_cal_id} href={`/celebrates/${item.slug}`} className="teaser-tile">
+                  <a key={item.ed_cal_id} href={`/celebrate/${item.slug}`} className="teaser-tile">
                     <div className="tile-bar bar-c" />
                     <div className="tile-image img-c">
                       <div className="tile-ph">
@@ -654,7 +654,7 @@ export default async function HomePage() {
 
                   if (isFeatured) {
                     return (
-                      <a key={item.ed_cal_id} href={`/collecting/${item.slug}`} className="teaser-tile tile-featured">
+                      <a key={item.ed_cal_id} href={`/collect/${item.slug}`} className="teaser-tile tile-featured">
                         <div className="feat-sidebar">
                           <div className="tile-bar bar-g" />
                           <div className="feat-img">
@@ -679,7 +679,7 @@ export default async function HomePage() {
                   }
 
                   return (
-                    <a key={item.ed_cal_id} href={`/collecting/${item.slug}`} className="teaser-tile">
+                    <a key={item.ed_cal_id} href={`/collect/${item.slug}`} className="teaser-tile">
                       <div className="tile-bar bar-g" />
                       <div className="tile-image img-g" style={{position: 'relative'}}>
                         <div className="guide-num">0{i + 1}</div>
@@ -761,10 +761,10 @@ export default async function HomePage() {
             <div>
               <div className="home-footer-col-title">Explore</div>
               <div className="home-footer-links">
-                <a href="/players" className="home-footer-link">Players</a>
-                <a href="/spotlights" className="home-footer-link">Spotlight</a>
-                <a href="/celebrates" className="home-footer-link">Celebrate</a>
-                <a href="/collecting" className="home-footer-link">Collecting 101</a>
+                <a href="/player" className="home-footer-link">Players</a>
+                <a href="/spotlight" className="home-footer-link">Spotlight</a>
+                <a href="/celebrate" className="home-footer-link">Celebrate</a>
+                <a href="/collect" className="home-footer-link">Collecting 101</a>
               </div>
             </div>
             <div>
