@@ -71,68 +71,46 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
 
       setPanel({ visible: true, x, y, cardId, cardData: null, loading: true });
 
-      // Fetch card data
-      const { data } = await supabase
-        .from("card")
-        .select(`
-          card_id,
-          card_number,
-          card_type:card_type_lkp(value),
-          color:card_color_lkp(value),
-          subject_id,
-          subject_type:subject_type_lkp(value),
-          card_sets!inner(
-            set_name,
-            year,
-            manufacturer,
-            slug
-          ),
-          player!left(
-            first_name,
-            last_name,
-            slug,
-            player_team_season!left(
-              team!inner(team_name)
-            )
-          )
-        `)
-        .eq("card_id", cardId)
-        .single();
+     // Fetch card data — three separate queries to avoid join type issues
+    const { data: cardRow } = await (supabase as any)
+    .from("card")
+    .select("card_id, card_number, card_set_id, subject_id")
+    .eq("card_id", cardId)
+    .single();
 
-      if (!data) {
-        setPanel(p => ({ ...p, loading: false }));
-        return;
-      }
+    if (!cardRow) {
+    setPanel(p => ({ ...p, loading: false }));
+    return;
+    }
 
-      // Resolve player name and most recent team
-      const playerFirst = (data.player as any)?.first_name ?? null;
-      const playerLast  = (data.player as any)?.last_name  ?? null;
-      const playerName  = playerFirst && playerLast ? `${playerFirst} ${playerLast}` : null;
-      const playerSlug  = (data.player as any)?.slug ?? null;
-      const seasons     = (data.player as any)?.player_team_season ?? [];
-      const teamName    = seasons.length > 0
-        ? seasons[seasons.length - 1]?.team?.team_name ?? null
-        : null;
+    const { data: setRow } = await (supabase as any)
+    .from("card_sets")
+    .select("set_name, year, manufacturer, slug")
+    .eq("card_set_id", cardRow?.card_set_id)
+    .single();
 
-      const cardSets = data.card_sets as any;
-
-      setPanel(p => ({
-        ...p,
-        loading: false,
-        cardData: {
-          card_id:       data.card_id,
-          card_number:   data.card_number,
-          card_type:     (data.card_type as any)?.value ?? null,
-          color:         (data.color as any)?.value ?? null,
-          player_name:   playerName,
-          team_name:     teamName,
-          set_name:      cardSets?.set_name ?? null,
-          year:          cardSets?.year ?? null,
-          manufacturer:  cardSets?.manufacturer ?? null,
-          player_slug:   playerSlug,
-          set_slug:      cardSets?.slug ?? null,
-        }
-      }));
+    const { data: playerRow } = await (supabase as any)
+    .from("player")
+    .select("first_name, last_name, slug")
+    .eq("player_id", cardRow?.subject_id)
+    .single();
+    setPanel(p => ({
+    ...p,
+    loading: false,
+    cardData: {
+        card_id:      cardId,
+        card_number:  cardRow?.card_number ?? null,
+        card_type:    null,
+        color:        null,
+        player_name:  playerRow ? `${playerRow.first_name} ${playerRow.last_name}` : null,
+        team_name:    null,
+        set_name:     setRow?.set_name ?? null,
+        year:         setRow?.year ?? null,
+        manufacturer: setRow?.manufacturer ?? null,
+        player_slug:  playerRow?.slug ?? null,
+        set_slug:     setRow?.slug ?? null,
+    }
+    }));
     };
 
     const handleClick = (e: MouseEvent) => {
@@ -161,9 +139,8 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
     if (!panel.cardId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { error } = await supabase
-      .from("member_wishlist")
-      .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
+  const { error } = await (supabase.from("member_wishlist") as any)
+  .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
     if (error) { showToast("Something went wrong — try again"); return; }
     showToast("Added to your want list ✓");
     close();
@@ -175,9 +152,8 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
     if (!panel.cardId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { error } = await supabase
-      .from("member_card_favorites")
-      .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
+   const { error } = await (supabase.from("member_card_favorites") as any)
+  .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
     if (error) { showToast("Something went wrong — try again"); return; }
     showToast("Added to favorites ✓");
     close();
