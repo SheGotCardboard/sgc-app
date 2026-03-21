@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccess } from "@/lib/access";
 import Nav from "@/components/layout/Nav";
 import CardImage from "@/components/card/CardImage";
+import Footer from "@/components/layout/Footer";
 
 type EdItem = {
   ed_cal_id: string;
@@ -487,48 +488,10 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-
+/*
         {/* ── FOOTER ── */}
-        <footer className="home-footer">
-          <div className="home-footer-inner">
-            <div>
-              <div className="home-footer-logo-row">
-                <svg width="18" height="25" viewBox="0 0 30 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="1.5" y="1.5" width="27" height="39" rx="3.5" fill="white" stroke="#d97757" strokeWidth="2.25"/>
-                  <rect x="4.5" y="4.5" width="21" height="24" rx="1.5" fill="#f5ede4"/>
-                  <path d="M15 8 L15.8 15.2 L22.5 16.5 L15.8 17.8 L15 25 L14.2 17.8 L7.5 16.5 L14.2 15.2 Z" fill="#c9921a" opacity="0.75"/>
-                  <rect x="7" y="32" width="16" height="1.5" rx="0.75" fill="white" opacity="0.15"/>
-                  <rect x="9" y="35.5" width="12" height="1.5" rx="0.75" fill="white" opacity="0.1"/>
-                </svg>
-                <span className="home-footer-logo-she">She</span>
-                <span className="home-footer-logo-rest">got Cardboard</span>
-              </div>
-              <p className="home-footer-tagline">The editorial home for celebrating women athletes through collecting. Built with heart.</p>
-            </div>
-            <div>
-              <div className="home-footer-col-title">Explore</div>
-              <div className="home-footer-links">
-                <a href="/player" className="home-footer-link">Players</a>
-                <a href="/spotlight" className="home-footer-link">Spotlight</a>
-                <a href="/celebrate" className="home-footer-link">Celebrate</a>
-                <a href="/collect" className="home-footer-link">Collecting 101</a>
-              </div>
-            </div>
-            <div>
-              <div className="home-footer-col-title">Account</div>
-              <div className="home-footer-links">
-                <a href="/membership" className="home-footer-link">Membership</a>
-                <a href="/login" className="home-footer-link">Sign in</a>
-                <a href="/signup" className="home-footer-link">Join free</a>
-                <a href="mailto:editor@shegotcardboard.com" className="home-footer-link">Contact</a>
-              </div>
-            </div>
-          </div>
-          <div className="home-footer-bottom">
-            <div className="home-footer-copy">© 2026 She Got Cardboard</div>
-            <div className="home-footer-copy">Collect Her Story · Celebrate Her Wins · Honor Her Legacy</div>
-          </div>
-        </footer>
+
+        <Footer />
 
       </div>
     </>

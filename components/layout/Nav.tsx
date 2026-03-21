@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import AboutDropdown from "@/components/layout/AboutDropdown";
 
 interface NavProps {
   activePage?: string;
@@ -12,7 +13,7 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
   if (variant === "member") {
     return (
       <nav className="sgc-nav">
-       <a href="/" className="sgc-nav-logo">
+        <a href="/" className="sgc-nav-logo">
           <svg width="18" height="25" viewBox="0 0 30 42" fill="none" xmlns="http://www.w3.org/2000/svg" style={{flexShrink: 0}}>
             <rect x="1.5" y="1.5" width="27" height="39" rx="3.5" fill="white" stroke="#d97757" strokeWidth="2.25"/>
             <rect x="4.5" y="4.5" width="21" height="24" rx="1.5" fill="#f5ede4"/>
@@ -52,6 +53,8 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
     );
   }
 
+  const userHandle = user?.email?.split('@')[0];
+
   return (
     <>
       <style>{`
@@ -64,16 +67,27 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
         .sgc-nav-pub-link { font-size: 0.85rem; font-weight: 600; color: var(--slate-soft); text-decoration: none; padding: 6px 12px; border-radius: var(--radius-sm); transition: all 0.15s; white-space: nowrap; position: relative; }
         .sgc-nav-pub-link:hover { color: var(--terracotta); background: rgba(217,119,87,0.07); }
         .sgc-nav-pub-link.active { color: var(--terracotta); background: rgba(217,119,87,0.08); }
-        .sgc-nav-pub-link.soon { opacity: 0.4; pointer-events: none; }
-        .sgc-nav-pub-link.soon::after { content: 'Soon'; font-size: 7px; font-weight: 800; background: var(--gold); color: var(--slate); padding: 1px 4px; border-radius: 3px; position: absolute; top: 2px; right: 1px; }
         .sgc-nav-pub-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
         .sgc-nav-pub-signin { font-size: 0.85rem; font-weight: 600; color: var(--slate-soft); text-decoration: none; padding: 6px 14px; border-radius: var(--radius-sm); transition: color 0.15s; }
         .sgc-nav-pub-signin:hover { color: var(--slate); }
         .sgc-nav-pub-join { font-size: 0.85rem; font-weight: 700; color: white; background: var(--terracotta); text-decoration: none; padding: 7px 16px; border-radius: var(--radius-pill); transition: background 0.15s; }
         .sgc-nav-pub-join:hover { background: var(--terracotta-deep); }
-        .sgc-nav-pub-dashboard { font-size: 0.85rem; font-weight: 600; color: var(--slate-soft); text-decoration: none; padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); transition: all 0.15s; }
-        .sgc-nav-pub-dashboard:hover { border-color: var(--terracotta); color: var(--terracotta); }
-        @media (max-width: 768px) { .sgc-nav-pub-links { display: none; } .sgc-nav-public-inner { padding: 0 24px; } }
+        .sgc-nav-pub-user { display: flex; align-items: center; gap: 8px; }
+        .sgc-nav-pub-user-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--forest); flex-shrink: 0; }
+        .sgc-nav-pub-user-name { font-size: 0.8rem; font-weight: 500; color: var(--slate-soft); }
+        .sgc-nav-pub-dashboard { font-size: 0.85rem; font-weight: 700; color: white; background: var(--terracotta); text-decoration: none; padding: 7px 16px; border-radius: var(--radius-pill); transition: background 0.15s; }
+        .sgc-nav-pub-dashboard:hover { background: var(--terracotta-deep); }
+
+        /* ── ABOUT DROPDOWN ── */
+        .sgc-nav-about-wrap { position: relative; }
+        .sgc-nav-about-btn { font-size: 0.85rem; font-weight: 600; color: var(--slate-soft); background: none; border: none; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: all 0.15s; display: flex; align-items: center; font-family: var(--font-body); }
+        .sgc-nav-about-btn:hover { color: var(--terracotta); background: rgba(217,119,87,0.07); }
+        .sgc-nav-about-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 200px; background: var(--warm-white); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(61,57,53,0.10); padding: 6px; z-index: 300; }
+        .sgc-nav-about-item { display: block; font-size: 0.85rem; font-weight: 500; color: var(--slate-soft); text-decoration: none; padding: 8px 12px; border-radius: var(--radius-sm); transition: all 0.15s; }
+        .sgc-nav-about-item:hover { color: var(--terracotta); background: rgba(217,119,87,0.07); }
+        .sgc-nav-about-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+        @media (max-width: 768px) { .sgc-nav-pub-links { display: none; } .sgc-nav-public-inner { padding: 0 24px; } .sgc-nav-pub-user-name { display: none; } }
       `}</style>
       <nav className="sgc-nav-public">
         <div className="sgc-nav-public-inner">
@@ -89,16 +103,19 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
             <span className="sgc-nav-pub-logo-sub">got cardboard</span>
           </a>
           <div className="sgc-nav-pub-links">
-            <a href="/" className={`sgc-nav-pub-link${activePage === "home" ? " active" : ""}`}>Home</a>
             <a href="/player" className={`sgc-nav-pub-link${activePage === "players" ? " active" : ""}`}>Players</a>
             <a href="/spotlight" className={`sgc-nav-pub-link${activePage === "spotlights" ? " active" : ""}`}>Spotlight</a>
             <a href="/celebrate" className={`sgc-nav-pub-link${activePage === "celebrates" ? " active" : ""}`}>Celebrate</a>
             <a href="/collect" className={`sgc-nav-pub-link${activePage === "collecting" ? " active" : ""}`}>Collect</a>
-            <a href="#" className="sgc-nav-pub-link soon">SGC Wire</a>
+            <AboutDropdown />
           </div>
           <div className="sgc-nav-pub-right">
             {user ? (
-              <a href="/dashboard" className="sgc-nav-pub-dashboard">Dashboard →</a>
+              <div className="sgc-nav-pub-user">
+                <span className="sgc-nav-pub-user-dot" />
+                <span className="sgc-nav-pub-user-name">{userHandle}</span>
+                <a href="/dashboard" className="sgc-nav-pub-dashboard">Dashboard →</a>
+              </div>
             ) : (
               <>
                 <a href="/login" className="sgc-nav-pub-signin">Sign in</a>
