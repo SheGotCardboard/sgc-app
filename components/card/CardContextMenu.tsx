@@ -39,7 +39,11 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
   });
   const [toast, setToast] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const panelStateRef = useRef(panel);
   const supabase = createClient();
+
+  // Keep ref in sync with state so event handlers always see current values
+  useEffect(() => { panelStateRef.current = panel; }, [panel]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -50,13 +54,22 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
     setPanel(p => ({ ...p, visible: false, cardData: null, cardId: null }));
   }, []);
 
-  // Global right-click handler — only fires on elements with data-card-id
   useEffect(() => {
     const handleContextMenu = async (e: MouseEvent) => {
-      const target = (e.target as HTMLElement).closest("[data-card-id]") as HTMLElement | null;
-      if (!target) return;
-
       e.preventDefault();
+
+      const target = (e.target as HTMLElement).closest("[data-card-id]") as HTMLElement | null;
+      if (!target) {
+        setPanel({
+          visible: true,
+          x: e.clientX,
+          y: e.clientY,
+          cardId: null,
+          cardData: null,
+          loading: false,
+        });
+        return;
+      }
 
       const cardId = target.getAttribute("data-card-id");
       if (!cardId) return;
@@ -64,53 +77,87 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
       // Position panel at cursor, keep within viewport
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const pw = 280; // panel width
-      const ph = 320; // approx panel height
+      const pw = 280;
+      const ph = 320;
       const x = e.clientX + pw > vw ? e.clientX - pw : e.clientX;
       const y = e.clientY + ph > vh ? e.clientY - ph : e.clientY;
 
       setPanel({ visible: true, x, y, cardId, cardData: null, loading: true });
 
-     // Fetch card data — three separate queries to avoid join type issues
-    const { data: cardRow } = await (supabase as any)
-    .from("card")
-    .select("card_id, card_number, card_set_id, subject_id")
-    .eq("card_id", cardId)
-    .single();
+      const { data: cardRow } = await (supabase as any)
+        .from("card")
+        .select("card_id, card_number, card_set_id, pri_subject_id, pri_subject_type_id, card_type_id")
+        .eq("card_id", cardId)
+        .single();
 
-    if (!cardRow) {
-    setPanel(p => ({ ...p, loading: false }));
-    return;
-    }
+      if (!cardRow) {
+        setPanel(p => ({ ...p, loading: false }));
+        return;
+      }
 
-    const { data: setRow } = await (supabase as any)
-    .from("card_sets")
-    .select("set_name, year, manufacturer, slug")
-    .eq("card_set_id", cardRow?.card_set_id)
-    .single();
+      const { data: setRow } = await (supabase as any)
+        .from("card_sets")
+        .select("set_name, year, manufacturer, slug")
+        .eq("card_set_id", cardRow?.card_set_id)
+        .single();
 
-    const { data: playerRow } = await (supabase as any)
-    .from("player")
-    .select("first_name, last_name, slug")
-    .eq("player_id", cardRow?.subject_id)
-    .single();
-    setPanel(p => ({
-    ...p,
-    loading: false,
-    cardData: {
-        card_id:      cardId,
-        card_number:  cardRow?.card_number ?? null,
-        card_type:    null,
-        color:        null,
-        player_name:  playerRow ? `${playerRow.first_name} ${playerRow.last_name}` : null,
-        team_name:    null,
-        set_name:     setRow?.set_name ?? null,
-        year:         setRow?.year ?? null,
-        manufacturer: setRow?.manufacturer ?? null,
-        player_slug:  playerRow?.slug ?? null,
-        set_slug:     setRow?.slug ?? null,
-    }
-    }));
+      // Branch on subject type — player or team
+      const isTeam = cardRow?.pri_subject_type_id === '4df9fb8c-d346-48a0-9bec-61e21a55e295';
+      const isPlayer = cardRow?.pri_subject_type_id === '78f8a7f8-89a1-4272-a6c6-90235881363c';
+
+      let subjectName: string | null = null;
+      let subjectSlug: string | null = null;
+
+      if (isPlayer) {
+        const { data: playerRow } = await (supabase as any)
+          .from("player")
+          .select("first_name, last_name, slug")
+          .eq("player_id", cardRow?.pri_subject_id)
+          .single();
+        subjectName = playerRow ? `${playerRow.first_name} ${playerRow.last_name}` : null;
+        subjectSlug = playerRow?.slug ?? null;
+      } else if (isTeam) {
+        const { data: teamRow } = await (supabase as any)
+          .from("team")
+          .select("team_name, slug")
+          .eq("team_id", cardRow?.pri_subject_id)
+          .single();
+        subjectName = teamRow?.team_name ?? null;
+        subjectSlug = teamRow?.slug ?? null;
+      }
+
+      // Fetch card type label
+      const { data: cardTypeRow } = await (supabase as any)
+        .from("card_type_lkp")
+        .select("value")
+        .eq("card_type_id", cardRow?.card_type_id)
+        .single();
+
+      setPanel(p => ({
+        ...p,
+        loading: false,
+        cardData: {
+          card_id:      cardId,
+          card_number:  cardRow?.card_number ?? null,
+          card_type:    cardTypeRow?.value ?? null,
+          color:        null,
+          player_name:  subjectName,
+          team_name:    cardTypeRow?.value ?? null,
+          set_name:     setRow?.set_name ?? null,
+          year:         setRow?.year ?? null,
+          manufacturer: setRow?.manufacturer ?? null,
+          player_slug:  isPlayer ? subjectSlug : null,
+          set_slug:     setRow?.slug ?? null,
+        }
+      }));
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!panelStateRef.current.visible) return;
+      const dx = e.clientX - panelStateRef.current.x;
+      const dy = e.clientY - panelStateRef.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > 150) close();
     };
 
     const handleClick = (e: MouseEvent) => {
@@ -126,10 +173,12 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
     window.addEventListener("contextmenu", handleContextMenu);
     window.addEventListener("click", handleClick);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousemove", handleMouseMove);
     return () => {
       window.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("click", handleClick);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [close, supabase]);
 
@@ -139,8 +188,8 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
     if (!panel.cardId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-  const { error } = await (supabase.from("member_wishlist") as any)
-  .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
+    const { error } = await (supabase.from("member_wishlist") as any)
+      .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
     if (error) { showToast("Something went wrong — try again"); return; }
     showToast("Added to your want list ✓");
     close();
@@ -152,8 +201,8 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
     if (!panel.cardId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-   const { error } = await (supabase.from("member_card_favorites") as any)
-  .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
+    const { error } = await (supabase.from("member_card_favorites") as any)
+      .upsert({ user_id: user.id, card_id: panel.cardId }, { onConflict: "user_id,card_id" });
     if (error) { showToast("Something went wrong — try again"); return; }
     showToast("Added to favorites ✓");
     close();
@@ -199,12 +248,12 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
           ) : isAuthenticated && panel.cardData ? (
             <>
               <div className="ccp-player">{panel.cardData.player_name ?? "—"}</div>
-              <div className="ccp-team">{panel.cardData.team_name ?? "—"}</div>
+              <div className="ccp-team">{panel.cardData.card_type ?? "—"}</div>
             </>
           ) : !isAuthenticated ? (
             <>
-              <div className="ccp-player">Sign in to see card details</div>
-              <div className="ccp-team">Free with any account</div>
+              <div className="ccp-player">—</div>
+              <div className="ccp-team" style={{fontStyle: 'italic', opacity: 0.7}}>Sign in for full details</div>
             </>
           ) : (
             <>
@@ -218,16 +267,16 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
         {isAuthenticated && !panel.loading && panel.cardData && (
           <div className="ccp-body">
             <div className="ccp-row">
+              <span className="ccp-row-label">Card #</span>
+              <span className="ccp-row-value">{panel.cardData.card_number ?? "—"}</span>
+            </div>
+            <div className="ccp-row">
               <span className="ccp-row-label">Set</span>
               <span className="ccp-row-value">{panel.cardData.set_name ?? "—"}</span>
             </div>
             <div className="ccp-row">
               <span className="ccp-row-label">Year</span>
               <span className="ccp-row-value">{panel.cardData.year ?? "—"}</span>
-            </div>
-            <div className="ccp-row">
-              <span className="ccp-row-label">Type</span>
-              <span className="ccp-row-value">{panel.cardData.card_type ?? "—"}</span>
             </div>
             <div className="ccp-row">
               <span className="ccp-row-label">Manufacturer</span>
