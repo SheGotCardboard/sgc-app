@@ -13,14 +13,12 @@ type EdItem = {
   publish_date: string;
   free_publish_date: string | null;
   story_card_id: string | null;
-  card_filename: string | null;
 };
 
 export default async function HomePage() {
   const supabase = await createClient();
   const access = await getAccess();
   const now = new Date().toISOString();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: edTypesRaw } = await supabase
     .from("ed_type_lkp")
@@ -31,16 +29,50 @@ export default async function HomePage() {
   const celebratesTypeId = edTypes.find(t => t.value === "celebrates")?.ed_type_id;
   const collectTypeId = edTypes.find(t => t.value === "collect")?.ed_type_id;
 
-  const [spotlights, celebrates, collecting] = await Promise.all([
+  // ── Spotlight: current, prev, next ────────────────────────
+  const [spotlightCurrentRaw, spotlightPrevRaw, spotlightNextRaw] = await Promise.all([
     spotlightTypeId ? supabase
       .from("ed_calendar")
       .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id")
       .eq("ed_type_id", spotlightTypeId)
       .eq("is_hidden", false)
       .lte("publish_date", now)
-      .gte("publish_date", thirtyDaysAgo)
       .order("publish_date", { ascending: false })
-      .limit(4) : { data: [] },
+      .limit(1) : { data: [] },
+
+    spotlightTypeId ? supabase
+      .from("ed_calendar")
+      .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id")
+      .eq("ed_type_id", spotlightTypeId)
+      .eq("is_hidden", false)
+      .lte("publish_date", now)
+      .order("publish_date", { ascending: false })
+      .range(1, 1) : { data: [] },
+
+    spotlightTypeId ? supabase
+      .from("ed_calendar")
+      .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id")
+      .eq("ed_type_id", spotlightTypeId)
+      .eq("is_hidden", false)
+      .gt("publish_date", now)
+      .order("publish_date", { ascending: true })
+      .limit(1) : { data: [] },
+  ]);
+
+  const spotlightCurrent = ((spotlightCurrentRaw.data ?? []) as EdItem[])[0] ?? null;
+  const spotlightPrev = ((spotlightPrevRaw.data ?? []) as EdItem[])[0] ?? null;
+  const spotlightNext = ((spotlightNextRaw.data ?? []) as EdItem[])[0] ?? null;
+
+  // ── Celebrates: current, prev, next ───────────────────────
+  const [celebCurrentRaw, celebPrevRaw, celebNextRaw] = await Promise.all([
+    celebratesTypeId ? supabase
+      .from("ed_calendar")
+      .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id")
+      .eq("ed_type_id", celebratesTypeId)
+      .eq("is_hidden", false)
+      .lte("publish_date", now)
+      .order("publish_date", { ascending: false })
+      .limit(1) : { data: [] },
 
     celebratesTypeId ? supabase
       .from("ed_calendar")
@@ -48,68 +80,152 @@ export default async function HomePage() {
       .eq("ed_type_id", celebratesTypeId)
       .eq("is_hidden", false)
       .lte("publish_date", now)
-      .gte("publish_date", thirtyDaysAgo)
       .order("publish_date", { ascending: false })
-      .limit(4) : { data: [] },
+      .range(1, 1) : { data: [] },
 
-    collectTypeId ? supabase
+    celebratesTypeId ? supabase
       .from("ed_calendar")
       .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id")
-      .eq("ed_type_id", collectTypeId)
+      .eq("ed_type_id", celebratesTypeId)
       .eq("is_hidden", false)
-      .lte("publish_date", now)
+      .gt("publish_date", now)
       .order("publish_date", { ascending: true })
-      .limit(4) : { data: [] },
+      .limit(1) : { data: [] },
   ]);
 
-  const spotlightItems = (spotlights.data ?? []) as EdItem[];
-  const celebratesItems = (celebrates.data ?? []) as EdItem[];
-  const collectingItems = (collecting.data ?? []) as EdItem[];
+  const celebCurrent = ((celebCurrentRaw.data ?? []) as EdItem[])[0] ?? null;
+  const celebPrev = ((celebPrevRaw.data ?? []) as EdItem[])[0] ?? null;
+  const celebNext = ((celebNextRaw.data ?? []) as EdItem[])[0] ?? null;
 
-  const storyCardIds = [
-    ...spotlightItems,
-    ...celebratesItems,
-    ...collectingItems,
-  ].map(i => i.story_card_id).filter(Boolean) as string[];
+  // ── Collect ────────────────────────────────────────────────
+  const { data: collectingRaw } = collectTypeId ? await supabase
+    .from("ed_calendar")
+    .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id")
+    .eq("ed_type_id", collectTypeId)
+    .eq("is_hidden", false)
+    .lte("publish_date", now)
+    .order("publish_date", { ascending: true })
+    .limit(4) : { data: [] };
 
-  const { data: cardFilenames } = await supabase
-    .from("card")
-    .select("card_id, filename")
-    .in("card_id", storyCardIds);
+  const collectingItems = (collectingRaw ?? []) as EdItem[];
+
+  // ── Card filenames ─────────────────────────────────────────
+  const allCardIds = [
+    spotlightCurrent?.story_card_id,
+    spotlightPrev?.story_card_id,
+    spotlightNext?.story_card_id,
+    celebCurrent?.story_card_id,
+    celebPrev?.story_card_id,
+    celebNext?.story_card_id,
+    ...collectingItems.map(i => i.story_card_id),
+  ].filter(Boolean) as string[];
+
+  const { data: cardFilenames } = allCardIds.length > 0
+    ? await supabase.from("card").select("card_id, filename").in("card_id", allCardIds)
+    : { data: [] };
 
   const filenameMap = Object.fromEntries(
-    (cardFilenames ?? []).map(c => [(c as any).card_id, (c as any).filename])
+    ((cardFilenames ?? []) as any[]).map((c: any) => [c.card_id, c.filename])
   );
 
   const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/public/cards";
+  const collectNewestId = collectingItems.length > 1 ? collectingItems[collectingItems.length - 1].ed_cal_id : null;
 
-  const collectNewestId = collectingItems.length > 1
-    ? collectingItems[collectingItems.length - 1].ed_cal_id
-    : null;
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  };
-
-  const cardImgStyle = {
-    width: '65%',
-    height: '90%',
-    objectFit: 'cover' as const,
-    objectPosition: 'center top',
-    borderRadius: '6px',
-    boxShadow: '0 4px 12px rgba(61,57,53,0.2)',
-  };
-
-  const placeholderSVG = (
-    <div className="tile-ph">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
+  // Parchment placeholder rectangle with small icon
+  const cardPlaceholder = (width: string = "33%") => (
+    <div style={{
+      width, aspectRatio: '5/7',
+      background: '#f5f0e8', borderRadius: '8px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: '0 4px 12px rgba(61,57,53,0.08)',
+    }}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c4b8a8" strokeWidth="1.25">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <circle cx="8.5" cy="8.5" r="1.5"/>
         <path d="m21 15-5-5L5 21"/>
       </svg>
     </div>
   );
+
+  // Side card — data only, taller with excerpt
+  const renderSideCard = (
+    item: EdItem | null,
+    label: string,
+    accentColor: string,
+    hrefPrefix: string,
+    isFuture: boolean
+  ) => {
+    if (!item) return <div className="trio-side trio-empty" />;
+    const inner = (
+      <div className={`trio-side${isFuture ? " trio-future" : ""}`}>
+        {isFuture && <div className="trio-coming-center">Coming Soon</div>}
+        <div className="trio-side-body">
+          <div className="trio-side-date" style={{color: accentColor}}>{formatDate(item.publish_date)}</div>
+          <div className="trio-side-title">{item.title}</div>
+          {item.subtitle && <div className="trio-side-subtitle">{item.subtitle}</div>}
+          {item.excerpt && <p className="trio-side-excerpt">{item.excerpt}</p>}
+          {!isFuture && <div className="trio-side-cta" style={{color: accentColor}}>{label} →</div>}
+        </div>
+      </div>
+    );
+    return isFuture ? inner : (
+      <a href={`/${hrefPrefix}/${item.slug}`} style={{textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%'}}>
+        {inner}
+      </a>
+    );
+  };
+
+  // Current card — parchment image area, card at 33% true ratio
+  const renderCurrentCard = (
+    item: EdItem | null,
+    accentColor: string,
+    hrefPrefix: string,
+    ctaText: string,
+    emptyIcon: string,
+    emptyMsg: string
+  ) => {
+    if (!item) return (
+      <div className="trio-current trio-empty-center">
+        <div style={{fontSize: '2.5rem', marginBottom: 12}}>{emptyIcon}</div>
+        <div style={{fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--slate)'}}>{emptyMsg}</div>
+      </div>
+    );
+    const filename = filenameMap[item.story_card_id ?? ""];
+    return (
+      <a href={`/${hrefPrefix}/${item.slug}`} className="trio-current" style={{textDecoration: 'none', color: 'inherit'}}>
+        <div className="trio-current-image" data-card-id={item.story_card_id ?? undefined}>
+          {filename
+            ? <CardImage
+                src={`${STORAGE_URL}/${filename}`}
+                alt={item.title}
+                style={{
+                  width: '33%',
+                  aspectRatio: '5/7',
+                  objectFit: 'cover',
+                  objectPosition: 'center top',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(61,57,53,0.22)',
+                }}
+                placeholder={cardPlaceholder("33%")}
+              />
+            : cardPlaceholder("33%")}
+        </div>
+        <div className="trio-current-body">
+          <div className="trio-current-meta">
+            <div className="trio-current-date" style={{color: accentColor}}>{formatDate(item.publish_date)}</div>
+            <div className="trio-current-badge" style={{background: accentColor}}>Current</div>
+          </div>
+          <div className="trio-current-title">{item.title}</div>
+          {item.subtitle && <div className="trio-current-subtitle">{item.subtitle}</div>}
+          {item.excerpt && <p className="trio-current-excerpt">{item.excerpt}</p>}
+          <div className="trio-current-cta" style={{color: accentColor}}>{ctaText} →</div>
+        </div>
+      </a>
+    );
+  };
 
   return (
     <>
@@ -132,9 +248,10 @@ export default async function HomePage() {
         .hero-card-star { font-size: 2rem; opacity: 0.4; }
         .hero-card-line { width: 60%; height: 6px; border-radius: 3px; background: var(--border); }
         .hero-card-line-sm { width: 40%; height: 4px; border-radius: 2px; background: var(--border); opacity: 0.6; }
+
         .home-section-wrap { width: 100%; }
         .home-section { max-width: 1100px; margin: 0 auto; padding: 56px 48px; }
-        .section-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; gap: 20px; flex-wrap: wrap; }
+        .section-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 20px; flex-wrap: wrap; }
         .section-head-left { flex: 1; min-width: 0; max-width: 700px; }
         .section-kicker-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 10px; }
         .kicker-s { background: rgba(217,119,87,0.15); color: var(--terracotta); }
@@ -145,39 +262,90 @@ export default async function HomePage() {
         .see-all { font-size: 12px; font-weight: 700; color: var(--slate-ghost); text-decoration: none; white-space: nowrap; padding-top: 4px; flex-shrink: 0; transition: color 0.15s; }
         .see-all:hover { color: var(--slate-soft); }
         .see-all::after { content: ' →'; }
-        .window-note { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: var(--slate-ghost); background: rgba(255,255,255,0.7); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; margin-bottom: 18px; }
-        .wdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ── TRIO ── */
+        .trio { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 16px; align-items: end; }
+        @media (max-width: 900px) { .trio { grid-template-columns: 1fr; align-items: start; } }
+
+        /* Side cards — data only, taller */
+        .trio-side {
+          background: white; border: 1px solid var(--border); border-radius: 12px;
+          overflow: hidden; transition: box-shadow 0.2s, transform 0.2s;
+          display: flex; flex-direction: column; min-height: 320px;
+        }
+        .trio-side:not(.trio-future):hover { box-shadow: var(--shadow-md); transform: translateY(-2px); cursor: pointer; }
+        .trio-future { opacity: 0.82; }
+        .trio-empty { background: transparent; border: 1px dashed var(--border); border-radius: 12px; min-height: 320px; }
+        .trio-coming-center {
+          padding: 10px 14px; text-align: center;
+          background: rgba(61,57,53,0.04);
+          font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+          color: var(--slate-ghost);
+        }
+        .trio-side-body { padding: 14px 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+        .trio-side-date { font-size: 10px; font-weight: 700; }
+        .trio-side-title { font-family: var(--font-display); font-size: 15px; color: var(--slate); line-height: 1.3; }
+        .trio-side-subtitle { font-size: 10px; font-style: italic; color: var(--slate-ghost); line-height: 1.4; }
+        .trio-side-excerpt {
+          font-size: 11px; line-height: 1.6; color: var(--slate-soft);
+          margin-top: 6px; flex: 1;
+          display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .trio-side-cta { font-size: 11px; font-weight: 700; margin-top: 10px; }
+
+        /* Current card */
+        .trio-current {
+          background: white; border: 1px solid var(--border); border-radius: 14px;
+          overflow: hidden; box-shadow: var(--shadow-md);
+          transition: box-shadow 0.2s, transform 0.2s; display: block;
+        }
+        .trio-current:hover { box-shadow: 0 12px 40px rgba(61,57,53,0.15); transform: translateY(-3px); }
+        .trio-empty-center { background: white; border: 1px dashed var(--border); border-radius: 14px; padding: 48px 24px; text-align: center; }
+
+        /* Image area — parchment bg, card at 33% with true 5:7 ratio */
+        .trio-current-image {
+          width: 100%; padding: 28px 0 24px;
+          display: flex; align-items: center; justify-content: center;
+          background: #f5f0e8; overflow: hidden; position: relative;
+        }
+
+        .trio-current-body { padding: 16px 18px 20px; }
+        .trio-current-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+        .trio-current-date { font-size: 11px; font-weight: 700; }
+        .trio-current-badge {
+          font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+          color: white; padding: 3px 10px; border-radius: 20px;
+        }
+        .trio-current-title { font-family: var(--font-display); font-size: 1.25rem; color: var(--slate); line-height: 1.2; margin-bottom: 4px; }
+        .trio-current-subtitle { font-size: 12px; font-style: italic; color: var(--slate-ghost); margin-bottom: 8px; }
+        .trio-current-excerpt {
+          font-size: 12px; line-height: 1.6; color: var(--slate-soft); margin-bottom: 12px;
+          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .trio-current-cta { font-size: 12px; font-weight: 700; }
+
+        /* Collect tiles */
         .tile-grid { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); }
         @media (max-width: 1100px) { .tile-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 800px)  { .tile-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 520px)  { .tile-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 520px)  { .tile-grid { grid-template-columns: 1fr; } .home-section { padding: 40px 24px; } }
         .teaser-tile { background: white; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm); text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: box-shadow 0.2s, transform 0.2s; }
         .teaser-tile:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
         .tile-bar { height: 4px; flex-shrink: 0; }
-        .bar-s { background: var(--terracotta); }
-        .bar-c { background: var(--lavender); }
         .bar-g { background: var(--forest); }
         .tile-image { flex-shrink: 0; display: flex; align-items: center; justify-content: center; height: 116px; overflow: hidden; position: relative; }
-        .img-s { background: rgba(217,119,87,0.07); }
-        .img-c { background: rgba(155,136,196,0.08); }
         .img-g { background: rgba(61,107,74,0.07); }
-        .tile-ph { display: flex; align-items: center; justify-content: center; opacity: 0.2; color: var(--slate); }
         .guide-num { font-family: var(--font-display); font-size: 52px; line-height: 1; color: rgba(61,107,74,0.10); position: absolute; right: 12px; bottom: 2px; user-select: none; }
         .tile-new-badge { position: absolute; top: 10px; left: 10px; font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; background: var(--forest); color: white; padding: 3px 8px; border-radius: 20px; }
         .tile-body { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; }
         .tile-type { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 5px; }
-        .type-s { color: var(--terracotta); }
-        .type-c { color: var(--lavender); }
         .type-g { color: var(--forest); }
-        .tile-date { font-size: 11px; color: var(--slate-ghost); margin-bottom: 4px; }
         .tile-title { font-family: var(--font-display); font-size: 16px; line-height: 1.25; color: var(--slate); margin-bottom: 3px; }
         .tile-subtitle { font-size: 11px; font-style: italic; color: var(--slate-ghost); margin-bottom: 8px; line-height: 1.4; }
         .tile-excerpt { font-size: 12px; line-height: 1.6; color: var(--slate-soft); flex: 1; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
         .tile-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--border); margin-top: auto; }
         .tile-cta { font-size: 11px; font-weight: 700; }
         .tile-cta::after { content: ' →'; }
-        .cta-s { color: var(--terracotta); }
-        .cta-c { color: var(--lavender); }
         .cta-g { color: var(--forest); }
         .tile-gate { font-size: 10px; color: var(--slate-ghost); font-style: italic; }
         .tile-featured { display: flex; flex-direction: row; grid-column: span 2; }
@@ -189,8 +357,7 @@ export default async function HomePage() {
         .feat-num { font-family: var(--font-display); font-size: 72px; line-height: 1; color: rgba(61,107,74,0.12); user-select: none; }
         .feat-main { display: flex; flex-direction: column; flex: 1; }
         .feat-main .tile-bar { width: 100%; }
-        .feat-main .tile-title { font-size: 19px !important; }
-        .feat-main .tile-excerpt { -webkit-line-clamp: 4 !important; }
+
         .gate-banner { margin-top: 28px; padding: 24px 0 4px; border-top: 1px solid rgba(61,57,53,0.12); display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
         .gate-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--slate-ghost); margin-bottom: 4px; }
         .gate-msg { font-family: var(--font-display); font-size: 18px; color: var(--slate); margin-bottom: 3px; }
@@ -210,23 +377,11 @@ export default async function HomePage() {
         .membership-strip-title em { font-style: italic; color: var(--terracotta-blush); }
         .membership-strip-sub { font-size: 0.95rem; color: rgba(255,255,255,0.55); line-height: 1.65; margin-bottom: 32px; }
         .membership-strip-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-        .home-footer { background: var(--slate); border-top: 1px solid rgba(255,255,255,0.06); padding: 52px 0 36px; }
-        .home-footer-inner { max-width: 1100px; margin: 0 auto; padding: 0 48px; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 48px; margin-bottom: 40px; }
-        .home-footer-logo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-        .home-footer-logo-she { font-family: var(--font-logo); font-size: 2rem; font-weight: 700; color: var(--terracotta); line-height: 1; }
-        .home-footer-logo-rest { font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.5); }
-        .home-footer-tagline { font-size: 0.8rem; color: rgba(255,255,255,0.35); font-style: italic; line-height: 1.6; max-width: 240px; }
-        .home-footer-col-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: rgba(255,255,255,0.3); margin-bottom: 14px; }
-        .home-footer-links { display: flex; flex-direction: column; gap: 10px; }
-        .home-footer-link { font-size: 0.85rem; color: rgba(255,255,255,0.45); text-decoration: none; transition: color 0.15s; }
-        .home-footer-link:hover { color: var(--terracotta); }
-        .home-footer-bottom { max-width: 1100px; margin: 0 auto; padding: 24px 48px 0; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-        .home-footer-copy { font-size: 11px; color: rgba(255,255,255,0.2); }
-        @media (max-width: 768px) { .hero-inner { grid-template-columns: 1fr; } .hero-visual { display: none; } .home-footer-inner { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .hero-inner { grid-template-columns: 1fr; } .hero-visual { display: none; } }
       `}</style>
 
       <div className="sgc-page">
-        <Nav />
+        <Nav activePage="home" />
 
         {/* ── HERO ── */}
         <section className="hero">
@@ -237,7 +392,7 @@ export default async function HomePage() {
               <p className="hero-sub">The editorial home for celebrating women athletes through collecting. Join a community that collects with heart, celebrates with joy, and honors the women who made history.</p>
               <div className="hero-actions">
                 <a href="/membership" className="sgc-btn sgc-btn-primary">Join Our Community</a>
-                <a href="/players" className="sgc-btn sgc-btn-ghost">Meet the Players</a>
+                <a href="/player" className="sgc-btn sgc-btn-ghost">Meet the Players</a>
               </div>
             </div>
             <div className="hero-visual">
@@ -261,44 +416,11 @@ export default async function HomePage() {
               </div>
               <a href="/spotlight" className="see-all">All Spotlights</a>
             </div>
-            <div className="window-note">
-              <span className="wdot" style={{background: 'var(--terracotta)'}} />
-              Last 30 days · sign in to read
+            <div className="trio">
+              {renderSideCard(spotlightPrev, "Previous", "var(--terracotta)", "spotlight", false)}
+              {renderCurrentCard(spotlightCurrent, "var(--terracotta)", "spotlight", "Read her story", "⭐", "First spotlight coming soon")}
+              {renderSideCard(spotlightNext, "Coming Soon", "var(--terracotta)", "spotlight", true)}
             </div>
-            {spotlightItems.length > 0 ? (
-              <div className="tile-grid">
-                {spotlightItems.map((item) => {
-                  const filename = filenameMap[item.story_card_id ?? ""];
-                  return (
-                    <a key={item.ed_cal_id} href={`/spotlight/${item.slug}`} className="teaser-tile">
-                      <div className="tile-bar bar-s" />
-                      <div className="tile-image img-s" data-card-id={item.story_card_id ?? undefined}>
-                        {filename
-                          ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={cardImgStyle} placeholder={placeholderSVG} />
-                          : placeholderSVG}
-                      </div>
-                      <div className="tile-body">
-                        <div className="tile-type type-s">Player Spotlight</div>
-                        <div className="tile-date">{formatDate(item.publish_date)}</div>
-                        <div className="tile-title">{item.title}</div>
-                        {item.subtitle && <div className="tile-subtitle">{item.subtitle}</div>}
-                        {item.excerpt && <p className="tile-excerpt">{item.excerpt}</p>}
-                        <div className="tile-footer">
-                          <span className="tile-cta cta-s">Read her story</span>
-                          <span className="tile-gate">{access.isAuthenticated ? "Read now" : "Sign in to read"}</span>
-                        </div>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-state-icon">⭐</div>
-                <div className="empty-state-text">First spotlight coming soon</div>
-                <div className="empty-state-desc">Our first player spotlight drops with launch week.</div>
-              </div>
-            )}
             {!access.isAuthenticated && (
               <div className="gate-banner">
                 <div>
@@ -326,44 +448,11 @@ export default async function HomePage() {
               </div>
               <a href="/celebrate" className="see-all">All Celebrations</a>
             </div>
-            <div className="window-note">
-              <span className="wdot" style={{background: 'var(--lavender)'}} />
-              Last 30 days · Chronicle members unlock the full card gallery
+            <div className="trio">
+              {renderSideCard(celebPrev, "Previous", "var(--lavender)", "celebrate", false)}
+              {renderCurrentCard(celebCurrent, "var(--lavender)", "celebrate", "Read the story", "🏆", "First celebration coming soon")}
+              {renderSideCard(celebNext, "Coming Soon", "var(--lavender)", "celebrate", true)}
             </div>
-            {celebratesItems.length > 0 ? (
-              <div className="tile-grid">
-                {celebratesItems.map((item) => {
-                  const filename = filenameMap[item.story_card_id ?? ""];
-                  return (
-                    <a key={item.ed_cal_id} href={`/celebrate/${item.slug}`} className="teaser-tile">
-                      <div className="tile-bar bar-c" />
-                      <div className="tile-image img-c" data-card-id={item.story_card_id ?? undefined}>
-                        {filename
-                          ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={cardImgStyle} placeholder={placeholderSVG} />
-                          : placeholderSVG}
-                      </div>
-                      <div className="tile-body">
-                        <div className="tile-type type-c">SGC Celebrates</div>
-                        <div className="tile-date">{formatDate(item.publish_date)}</div>
-                        <div className="tile-title">{item.title}</div>
-                        {item.subtitle && <div className="tile-subtitle">{item.subtitle}</div>}
-                        {item.excerpt && <p className="tile-excerpt">{item.excerpt}</p>}
-                        <div className="tile-footer">
-                          <span className="tile-cta cta-c">Read the story</span>
-                          <span className="tile-gate">{access.isAuthenticated ? "Read now" : "Sign in to read"}</span>
-                        </div>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-state-icon">🏆</div>
-                <div className="empty-state-text">First celebration coming soon</div>
-                <div className="empty-state-desc">Stories worth celebrating — dropping at launch.</div>
-              </div>
-            )}
             {!access.isAuthenticated && (
               <div className="gate-banner">
                 <div>
@@ -389,11 +478,7 @@ export default async function HomePage() {
                 <h2 className="section-head-title">Her Card, Your Collection</h2>
                 <p className="section-head-desc">The editorial perspective on collecting women&apos;s sports cards — about relationship and meaning, not markets.</p>
               </div>
-              <a href="/collecting" className="see-all">All Guides</a>
-            </div>
-            <div className="window-note" style={{borderColor: 'rgba(61,107,74,0.2)'}}>
-              <span className="wdot" style={{background: 'var(--forest-light)'}} />
-              <span style={{color: 'var(--forest)'}}>Full archive · no time restriction · free with sign-in</span>
+              <a href="/collect" className="see-all">All Guides</a>
             </div>
             {collectingItems.length > 0 ? (
               <div className="tile-grid">
@@ -401,7 +486,6 @@ export default async function HomePage() {
                   const isFeatured = i === 0;
                   const isNewest = item.ed_cal_id === collectNewestId;
                   const filename = filenameMap[item.story_card_id ?? ""];
-
                   if (isFeatured) {
                     return (
                       <a key={item.ed_cal_id} href={`/collect/${item.slug}`} className="teaser-tile tile-featured">
@@ -409,8 +493,8 @@ export default async function HomePage() {
                           <div className="tile-bar bar-g" />
                           <div className="feat-img" data-card-id={item.story_card_id ?? undefined}>
                             {filename
-                              ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={{width: '80%', height: '90%', objectFit: 'cover', objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)'}} placeholder={<div className="feat-num">01</div>} />
-                              : <div className="feat-num">01</div>}
+                              ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={{width: '80%', height: '90%', objectFit: 'cover', objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)'}} placeholder={cardPlaceholder("80%")} />
+                              : cardPlaceholder("80%")}
                           </div>
                         </div>
                         <div className="feat-main">
@@ -429,13 +513,12 @@ export default async function HomePage() {
                       </a>
                     );
                   }
-
                   return (
                     <a key={item.ed_cal_id} href={`/collect/${item.slug}`} className="teaser-tile">
                       <div className="tile-bar bar-g" />
                       <div className="tile-image img-g" style={{position: 'relative'}} data-card-id={item.story_card_id ?? undefined}>
                         {filename
-                          ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={cardImgStyle} placeholder={<div className="guide-num">0{i + 1}</div>} />
+                          ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={{width: '65%', height: '90%', objectFit: 'cover', objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)'}} placeholder={<div className="guide-num">0{i + 1}</div>} />
                           : <div className="guide-num">0{i + 1}</div>}
                         {isNewest && <div className="tile-new-badge">New</div>}
                       </div>
@@ -454,10 +537,10 @@ export default async function HomePage() {
                 })}
               </div>
             ) : (
-              <div className="empty-state">
-                <div className="empty-state-icon">📚</div>
-                <div className="empty-state-text">Guides coming soon</div>
-                <div className="empty-state-desc">Start with Her Card, Your Collection — dropping at launch.</div>
+              <div style={{textAlign: 'center', padding: '60px 0'}}>
+                <div style={{fontSize: '2.5rem', marginBottom: 12}}>📚</div>
+                <div style={{fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--slate)', marginBottom: 8}}>Guides coming soon</div>
+                <div style={{fontSize: '0.9rem', color: 'var(--slate-ghost)'}}>Start with Her Card, Your Collection — dropping at launch.</div>
               </div>
             )}
             {!access.isAuthenticated && (
@@ -488,11 +571,8 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-/*
-        {/* ── FOOTER ── */}
 
         <Footer />
-
       </div>
     </>
   );

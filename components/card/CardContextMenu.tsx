@@ -42,7 +42,6 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
   const panelStateRef = useRef(panel);
   const supabase = createClient();
 
-  // Keep ref in sync with state so event handlers always see current values
   useEffect(() => { panelStateRef.current = panel; }, [panel]);
 
   const showToast = (msg: string) => {
@@ -59,6 +58,7 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
       e.preventDefault();
 
       const target = (e.target as HTMLElement).closest("[data-card-id]") as HTMLElement | null;
+
       if (!target) {
         setPanel({
           visible: true,
@@ -74,15 +74,15 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
       const cardId = target.getAttribute("data-card-id");
       if (!cardId) return;
 
-      // Position panel at cursor, keep within viewport
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const pw = 280;
-      const ph = 320;
+      const ph = 380;
       const x = e.clientX + pw > vw ? e.clientX - pw : e.clientX;
       const y = e.clientY + ph > vh ? e.clientY - ph : e.clientY;
 
-      setPanel({ visible: true, x, y, cardId, cardData: null, loading: true });
+      // Don't show panel yet — wait for data
+      setPanel({ visible: false, x, y, cardId, cardData: null, loading: true });
 
       const { data: cardRow } = await (supabase as any)
         .from("card")
@@ -91,7 +91,7 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
         .single();
 
       if (!cardRow) {
-        setPanel(p => ({ ...p, loading: false }));
+        setPanel(p => ({ ...p, visible: true, loading: false }));
         return;
       }
 
@@ -101,7 +101,6 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
         .eq("card_set_id", cardRow?.card_set_id)
         .single();
 
-      // Branch on subject type — player or team
       const isTeam = cardRow?.pri_subject_type_id === '4df9fb8c-d346-48a0-9bec-61e21a55e295';
       const isPlayer = cardRow?.pri_subject_type_id === '78f8a7f8-89a1-4272-a6c6-90235881363c';
 
@@ -126,15 +125,16 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
         subjectSlug = teamRow?.slug ?? null;
       }
 
-      // Fetch card type label
       const { data: cardTypeRow } = await (supabase as any)
         .from("card_type_lkp")
         .select("value")
         .eq("card_type_id", cardRow?.card_type_id)
         .single();
 
+      // Now show panel with all data ready
       setPanel(p => ({
         ...p,
+        visible: true,
         loading: false,
         cardData: {
           card_id:      cardId,
@@ -154,10 +154,18 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!panelStateRef.current.visible) return;
-      const dx = e.clientX - panelStateRef.current.x;
-      const dy = e.clientY - panelStateRef.current.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      if (distance > 150) close();
+      // Only dismiss if mouse is far from the panel element itself
+      if (panelRef.current) {
+        const rect = panelRef.current.getBoundingClientRect();
+        // Add a generous buffer zone around the panel
+        const buffer = 80;
+        const inZone =
+          e.clientX >= rect.left - buffer &&
+          e.clientX <= rect.right + buffer &&
+          e.clientY >= rect.top - buffer &&
+          e.clientY <= rect.bottom + buffer;
+        if (!inZone) close();
+      }
     };
 
     const handleClick = (e: MouseEvent) => {
@@ -217,7 +225,7 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
 
   const handlePlayerPage = () => {
     if (panel.cardData?.player_slug) {
-      window.location.href = `/players/${panel.cardData.player_slug}`;
+      window.location.href = `/player/${panel.cardData.player_slug}`;
     }
     close();
   };
@@ -243,9 +251,7 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
         {/* Header */}
         <div className="ccp-header">
           <div className="ccp-header-label">What is this card?</div>
-          {panel.loading ? (
-            <div className="ccp-loading">Loading…</div>
-          ) : isAuthenticated && panel.cardData ? (
+          {panel.cardData ? (
             <>
               <div className="ccp-player">{panel.cardData.player_name ?? "—"}</div>
               <div className="ccp-team">{panel.cardData.card_type ?? "—"}</div>
@@ -264,7 +270,7 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
         </div>
 
         {/* Body — card data rows */}
-        {isAuthenticated && !panel.loading && panel.cardData && (
+        {isAuthenticated && panel.cardData && (
           <div className="ccp-body">
             <div className="ccp-row">
               <span className="ccp-row-label">Card #</span>

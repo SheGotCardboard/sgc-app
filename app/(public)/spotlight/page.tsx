@@ -34,7 +34,7 @@ export default async function SpotlightIndexPage({
     .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id, is_hidden", { count: "exact" })
     .eq("ed_type_id", spotlightTypeId)
     .eq("is_hidden", false)
-    .order("publish_date", { ascending: false })
+    .order("publish_date", { ascending: true })
     .range(offset, offset + PAGE_SIZE - 1);
 
   const articles = (articlesRaw ?? []) as any[];
