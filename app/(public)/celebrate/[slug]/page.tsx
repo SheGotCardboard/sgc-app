@@ -10,8 +10,9 @@ const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/
 export default async function CelebrateArticlePage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const { slug } = await params;
   const supabase = await createClient();
   const access = await getAccess();
   const now = new Date();
@@ -27,7 +28,7 @@ export default async function CelebrateArticlePage({
   const { data: articleRaw } = await supabase
     .from("ed_calendar")
     .select("ed_cal_id, title, subtitle, excerpt, slug, publish_date, free_publish_date, story_card_id, is_hidden, body_html")
-    .eq("slug", params.slug)
+    .eq("slug", slug)
     .eq("is_hidden", false)
     .single();
 
@@ -51,7 +52,7 @@ export default async function CelebrateArticlePage({
     .eq("ed_type_id", celebratesTypeId)
     .eq("is_hidden", false)
     .lte("publish_date", now.toISOString())
-    .neq("slug", params.slug)
+    .neq("slug", slug)
     .order("publish_date", { ascending: false })
     .limit(6);
 
