@@ -10,11 +10,12 @@ const PAGE_SIZE = 12;
 export default async function SpotlightIndexPage({
   searchParams,
 }: {
-  searchParams: { page?: string };
+  searchParams: Promise<{ page?: string }>;
 }) {
+  const { page } = await searchParams;
+  const currentPage = Math.max(1, parseInt(page ?? "1", 10));
   const supabase = await createClient();
   const access = await getAccess();
-  const currentPage = Math.max(1, parseInt(searchParams.page ?? "1", 10));
   const offset = (currentPage - 1) * PAGE_SIZE;
   const now = new Date().toISOString();
 
