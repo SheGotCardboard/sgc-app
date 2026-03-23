@@ -5,7 +5,7 @@ const CHECKOUT_LINKS = {
   legacy: "https://buy.polar.sh/polar_cl_3pfgLCwUzfybSSaTFMLW4qoCbQ0heQftyKlZ52gvjnZ",
 };
 
-export default async function MembershipPage() {
+export default function MembershipPage() {
   return (
     <>
       <style>{`
