@@ -41,7 +41,7 @@ export default function EditorialPage() {
 
           <div className="pullquote">These women are mothers and daughters, sisters and partners. Their story is important — they are important.</div>
 
-          <p className="closing">SGC is written for all three of them, and for everyone who sees themselves in any one of them.</p>
+          <p className="closing">SGC is written for all of them, and for everyone who sees themselves in any one of them.</p>
         </div>
       </div>
 
