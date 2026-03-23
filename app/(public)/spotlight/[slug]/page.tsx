@@ -205,7 +205,7 @@ export default async function CelebrateArticlePage({
                 <div className="art-gate-title">Create a free account to read</div>
                 <p className="art-gate-desc">Every spotlight is free with a Story account. No credit card needed.</p>
                 <div className="art-gate-actions">
-                  <a href="/signup" className="art-gate-btn art-gate-primary">Join free</a>
+                  <a href="/membership" className="art-gate-btn art-gate-primary">Join free</a>
                   <a href="/login" className="art-gate-btn art-gate-ghost">Sign in</a>
                 </div>
               </div>

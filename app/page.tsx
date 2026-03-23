@@ -134,7 +134,6 @@ export default async function HomePage() {
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  // Parchment placeholder rectangle with small icon
   const cardPlaceholder = (width: string = "33%") => (
     <div style={{
       width, aspectRatio: '5/7',
@@ -150,7 +149,6 @@ export default async function HomePage() {
     </div>
   );
 
-  // Side card — data only, taller with excerpt
   const renderSideCard = (
     item: EdItem | null,
     label: string,
@@ -178,7 +176,6 @@ export default async function HomePage() {
     );
   };
 
-  // Current card — parchment image area, card at 33% true ratio
   const renderCurrentCard = (
     item: EdItem | null,
     accentColor: string,
@@ -248,7 +245,6 @@ export default async function HomePage() {
         .hero-card-star { font-size: 2rem; opacity: 0.4; }
         .hero-card-line { width: 60%; height: 6px; border-radius: 3px; background: var(--border); }
         .hero-card-line-sm { width: 40%; height: 4px; border-radius: 2px; background: var(--border); opacity: 0.6; }
-
         .home-section-wrap { width: 100%; }
         .home-section { max-width: 1100px; margin: 0 auto; padding: 56px 48px; }
         .section-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 20px; flex-wrap: wrap; }
@@ -262,69 +258,31 @@ export default async function HomePage() {
         .see-all { font-size: 12px; font-weight: 700; color: var(--slate-ghost); text-decoration: none; white-space: nowrap; padding-top: 4px; flex-shrink: 0; transition: color 0.15s; }
         .see-all:hover { color: var(--slate-soft); }
         .see-all::after { content: ' →'; }
-
-        /* ── TRIO ── */
         .trio { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 16px; align-items: end; }
         @media (max-width: 900px) { .trio { grid-template-columns: 1fr; align-items: start; } }
-
-        /* Side cards — data only, taller */
-        .trio-side {
-          background: white; border: 1px solid var(--border); border-radius: 12px;
-          overflow: hidden; transition: box-shadow 0.2s, transform 0.2s;
-          display: flex; flex-direction: column; min-height: 320px;
-        }
+        .trio-side { background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; display: flex; flex-direction: column; min-height: 320px; }
         .trio-side:not(.trio-future):hover { box-shadow: var(--shadow-md); transform: translateY(-2px); cursor: pointer; }
         .trio-future { opacity: 0.82; }
         .trio-empty { background: transparent; border: 1px dashed var(--border); border-radius: 12px; min-height: 320px; }
-        .trio-coming-center {
-          padding: 10px 14px; text-align: center;
-          background: rgba(61,57,53,0.04);
-          font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
-          color: var(--slate-ghost);
-        }
+        .trio-coming-center { padding: 10px 14px; text-align: center; background: rgba(61,57,53,0.04); font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--slate-ghost); }
         .trio-side-body { padding: 14px 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 5px; }
         .trio-side-date { font-size: 10px; font-weight: 700; }
         .trio-side-title { font-family: var(--font-display); font-size: 15px; color: var(--slate); line-height: 1.3; }
         .trio-side-subtitle { font-size: 10px; font-style: italic; color: var(--slate-ghost); line-height: 1.4; }
-        .trio-side-excerpt {
-          font-size: 11px; line-height: 1.6; color: var(--slate-soft);
-          margin-top: 6px; flex: 1;
-          display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
-        }
+        .trio-side-excerpt { font-size: 11px; line-height: 1.6; color: var(--slate-soft); margin-top: 6px; flex: 1; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
         .trio-side-cta { font-size: 11px; font-weight: 700; margin-top: 10px; }
-
-        /* Current card */
-        .trio-current {
-          background: white; border: 1px solid var(--border); border-radius: 14px;
-          overflow: hidden; box-shadow: var(--shadow-md);
-          transition: box-shadow 0.2s, transform 0.2s; display: block;
-        }
+        .trio-current { background: white; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-md); transition: box-shadow 0.2s, transform 0.2s; display: block; }
         .trio-current:hover { box-shadow: 0 12px 40px rgba(61,57,53,0.15); transform: translateY(-3px); }
         .trio-empty-center { background: white; border: 1px dashed var(--border); border-radius: 14px; padding: 48px 24px; text-align: center; }
-
-        /* Image area — parchment bg, card at 33% with true 5:7 ratio */
-        .trio-current-image {
-          width: 100%; padding: 28px 0 24px;
-          display: flex; align-items: center; justify-content: center;
-          background: #f5f0e8; overflow: hidden; position: relative;
-        }
-
+        .trio-current-image { width: 100%; padding: 28px 0 24px; display: flex; align-items: center; justify-content: center; background: #f5f0e8; overflow: hidden; position: relative; }
         .trio-current-body { padding: 16px 18px 20px; }
         .trio-current-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
         .trio-current-date { font-size: 11px; font-weight: 700; }
-        .trio-current-badge {
-          font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
-          color: white; padding: 3px 10px; border-radius: 20px;
-        }
+        .trio-current-badge { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: white; padding: 3px 10px; border-radius: 20px; }
         .trio-current-title { font-family: var(--font-display); font-size: 1.25rem; color: var(--slate); line-height: 1.2; margin-bottom: 4px; }
         .trio-current-subtitle { font-size: 12px; font-style: italic; color: var(--slate-ghost); margin-bottom: 8px; }
-        .trio-current-excerpt {
-          font-size: 12px; line-height: 1.6; color: var(--slate-soft); margin-bottom: 12px;
-          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-        }
+        .trio-current-excerpt { font-size: 12px; line-height: 1.6; color: var(--slate-soft); margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
         .trio-current-cta { font-size: 12px; font-weight: 700; }
-
-        /* Collect tiles */
         .tile-grid { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); }
         @media (max-width: 1100px) { .tile-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 800px)  { .tile-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -357,7 +315,6 @@ export default async function HomePage() {
         .feat-num { font-family: var(--font-display); font-size: 72px; line-height: 1; color: rgba(61,107,74,0.12); user-select: none; }
         .feat-main { display: flex; flex-direction: column; flex: 1; }
         .feat-main .tile-bar { width: 100%; }
-
         .gate-banner { margin-top: 28px; padding: 24px 0 4px; border-top: 1px solid rgba(61,57,53,0.12); display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
         .gate-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--slate-ghost); margin-bottom: 4px; }
         .gate-msg { font-family: var(--font-display); font-size: 18px; color: var(--slate); margin-bottom: 3px; }
@@ -429,7 +386,7 @@ export default async function HomePage() {
                   <p className="gate-sub">Sign up free and read every article — no paywall. Chronicle and Legacy members read 72 hours early.</p>
                 </div>
                 <div className="gate-actions">
-                  <a href="/signup" className="gate-btn gate-btn-primary">Create free account</a>
+                  <a href="/membership" className="gate-btn gate-btn-primary">Create free account</a>
                   <a href="/login" className="gate-btn gate-btn-ghost">Sign in</a>
                 </div>
               </div>
@@ -544,14 +501,14 @@ export default async function HomePage() {
               </div>
             )}
             {!access.isAuthenticated && (
-              <div className="gate-banner" style={{background: 'rgba(255,255,255,0.7)', borderColor: 'rgba(61,107,74,0.15)'}}>
+              <div className="gate-banner">
                 <div>
                   <div className="gate-eyebrow" style={{color: 'var(--forest)'}}>Free archive</div>
                   <div className="gate-msg">Every guide, always available.</div>
                   <p className="gate-sub">Collecting 101 has no time restriction. Create a free account and read every guide we&apos;ve ever published.</p>
                 </div>
                 <div className="gate-actions">
-                  <a href="/signup" className="gate-btn gate-btn-primary" style={{background: 'var(--forest)'}}>Create free account</a>
+                  <a href="/membership" className="gate-btn gate-btn-primary" style={{background: 'var(--forest)'}}>Create free account</a>
                   <a href="/login" className="gate-btn gate-btn-ghost">Sign in</a>
                 </div>
               </div>
@@ -567,7 +524,7 @@ export default async function HomePage() {
             <p className="membership-strip-sub">Join Chronicle or Legacy for early access, the full archive, and exclusive content that celebrates the women behind the cards.</p>
             <div className="membership-strip-actions">
               <a href="/membership" className="sgc-btn sgc-btn-primary">See membership options →</a>
-              <a href="/signup" className="sgc-btn" style={{background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)'}}>Join free</a>
+              <a href="/membership" className="sgc-btn" style={{background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)'}}>Join free</a>
             </div>
           </div>
         </div>

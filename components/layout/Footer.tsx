@@ -59,7 +59,7 @@ export default function Footer() {
           <div className="sgc-footer-links">
             <a href="/membership" className="sgc-footer-link">Membership</a>
             <a href="/login" className="sgc-footer-link">Sign in</a>
-            <a href="/signup" className="sgc-footer-link">Join free</a>
+            <a href="/membership" className="sgc-footer-link">Join free</a>
             <a href="/about/contact" className="sgc-footer-link">Contact</a>
           </div>
         </div>

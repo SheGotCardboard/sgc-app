@@ -109,7 +109,7 @@ export default function LoginPage() {
           )}
 
           <div className="sgc-auth-footer">
-            No account? <a href="/signup">Join SGC</a>
+            No account? <a href="/membership">Join SGC</a>
           </div>
         </div>
       </div>

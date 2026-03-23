@@ -317,7 +317,7 @@ export default function CardContextMenu({ isAuthenticated, hasWishlist, hasCardF
             </>
           ) : (
             <>
-              <a href="/signup" className="ccp-action primary">Join free</a>
+              <a href="/membership" className="ccp-action primary">Join free</a>
               <a href="/login" className="ccp-action">Sign in</a>
             </>
           )}

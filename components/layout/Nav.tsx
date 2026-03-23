@@ -119,7 +119,7 @@ export default async function Nav({ activePage, variant = "public" }: NavProps) 
             ) : (
               <>
                 <a href="/login" className="sgc-nav-pub-signin">Sign in</a>
-                <a href="/signup" className="sgc-nav-pub-join">Join free</a>
+                <a href="/membership" className="sgc-nav-pub-join">Join free</a>
               </>
             )}
           </div>
