@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
 import CardImage from "@/components/card/CardImage";
+import ArticleGallery from "@/components/editorial/ArticleGallery";
 
 const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/public/cards";
 
@@ -46,6 +47,67 @@ export default async function CelebrateArticlePage({
     : { data: null };
   const card = cardRaw as any;
 
+  // ── Fetch gallery ────────────────────────────────────────
+  const { data: gallerySimple } = await supabase
+    .from("ed_gallery")
+    .select("ed_gallery_id, display_order, card_id, ed_cal_id")
+    .eq("ed_cal_id", article.ed_cal_id)
+    .order("display_order", { ascending: true });
+
+  const galleryCardIds = (gallerySimple ?? []).map((g: any) => g.card_id).filter(Boolean);
+  const { data: galleryCardData } = galleryCardIds.length > 0
+    ? await supabase
+        .from("card")
+        .select("card_id, filename, card_number, print_run, card_type_id, color_id, card_set_id, pri_subject_id, pri_subject_type_id")
+        .in("card_id", galleryCardIds)
+    : { data: [] };
+
+  const galleryCardMap = Object.fromEntries(
+    ((galleryCardData ?? []) as any[]).map((c: any) => [c.card_id, c])
+  );
+
+  const cardSetIds = [...new Set(((galleryCardData ?? []) as any[]).map((c: any) => c.card_set_id).filter(Boolean))];
+  const { data: cardSetData } = cardSetIds.length > 0
+    ? await supabase.from("card_sets").select("card_set_id, set_name, year, manufacturer, slug").in("card_set_id", cardSetIds)
+    : { data: [] };
+  const cardSetMap = Object.fromEntries(
+    ((cardSetData ?? []) as any[]).map((s: any) => [s.card_set_id, s])
+  );
+
+  const { data: cardTypeData } = await supabase.from("card_type_lkp").select("card_type_id, value");
+  const cardTypeMap = Object.fromEntries(
+    ((cardTypeData ?? []) as any[]).map((t: any) => [t.card_type_id, t.value])
+  );
+
+  const { data: colorData } = await supabase.from("card_color_lkp").select("color_id, value");
+  const colorMap = Object.fromEntries(
+    ((colorData ?? []) as any[]).map((c: any) => [c.color_id, c.value])
+  );
+
+  const galleryCards = ((gallerySimple ?? []) as any[]).map((g: any) => {
+    const c = galleryCardMap[g.card_id] ?? {};
+    const cs = cardSetMap[c.card_set_id] ?? {};
+    const isPlayer = c.pri_subject_type_id === '78f8a7f8-89a1-4272-a6c6-90235881363c';
+    return {
+      ed_gallery_id: g.ed_gallery_id,
+      display_order: g.display_order,
+      caption: null,
+      card_id: g.card_id,
+      filename: c.filename ?? null,
+      card_number: c.card_number ?? null,
+      card_type: cardTypeMap[c.card_type_id] ?? null,
+      color: colorMap[c.color_id] ?? null,
+      print_run: c.print_run ?? null,
+      set_name: cs.set_name ?? null,
+      year: cs.year ?? null,
+      manufacturer: cs.manufacturer ?? null,
+      set_slug: cs.slug ?? null,
+      player_name: null,
+      player_slug: isPlayer ? null : null,
+    };
+  });
+
+  // ── Sidebar ──────────────────────────────────────────────
   const { data: sidebarRaw } = await supabase
     .from("ed_calendar")
     .select("ed_cal_id, title, excerpt, slug, publish_date, story_card_id")
@@ -57,7 +119,6 @@ export default async function CelebrateArticlePage({
     .limit(6);
 
   const sidebarArticles = (sidebarRaw ?? []) as any[];
-
   const sidebarCardIds = sidebarArticles.map((a: any) => a.story_card_id).filter(Boolean);
   const { data: sidebarCardsRaw } = sidebarCardIds.length > 0
     ? await supabase.from("card").select("card_id, filename").in("card_id", sidebarCardIds)
@@ -76,8 +137,8 @@ export default async function CelebrateArticlePage({
     <div className="sgc-page">
       <Nav activePage="celebrates" />
       <style>{`
-        .art-wrap { max-width: 1100px; margin: 0 auto; padding: 56px 48px; }
-        .art-layout { display: grid; grid-template-columns: 1fr 300px; gap: 48px; align-items: start; }
+        .art-wrap { max-width: 1200px; margin: 0 auto; padding: 56px 48px; }
+        .art-layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
         @media (max-width: 900px) { .art-layout { grid-template-columns: 1fr; } .art-wrap { padding: 40px 24px; } }
 
         .art-kicker { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lavender); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
@@ -86,18 +147,17 @@ export default async function CelebrateArticlePage({
         .art-subtitle { font-size: 1rem; font-style: italic; color: var(--slate-soft); margin-bottom: 20px; line-height: 1.5; }
         .art-date { font-size: 0.82rem; color: var(--slate-ghost); margin-bottom: 28px; }
 
-        /* Card left + excerpt right */
         .art-lede { display: flex; gap: 28px; align-items: flex-start; margin-bottom: 32px; }
         .art-lede-card { flex-shrink: 0; }
         .art-ph { width: 160px; height: 224px; background: rgba(155,136,196,0.08); border-radius: 10px; }
         .art-excerpt { font-size: 1.05rem; line-height: 1.8; color: var(--slate-soft); font-style: italic; border-left: 3px solid var(--lavender); padding-left: 20px; margin: 0; flex: 1; }
         @media (max-width: 600px) { .art-lede { flex-direction: column; } }
 
-        /* Body */
-        .art-body { font-size: 1rem; line-height: 1.8; color: var(--slate-soft); }
-        .art-body p { margin-bottom: 1.2em; }
+        .art-body { font-size: 1rem; line-height: 1.85; color: var(--slate-soft); max-width: 680px; }
+        .art-body p { margin-bottom: 1.6em; }
+        .art-body h2 { font-family: var(--font-display); font-size: 1.6rem; color: var(--slate); margin: 2em 0 0.6em; line-height: 1.2; }
+        .art-body h3 { font-family: var(--font-display); font-size: 1.2rem; color: var(--lavender); margin: 1.6em 0 0.5em; line-height: 1.2; }
 
-        /* Gate */
         .art-gate { background: var(--lavender-mist); border-radius: 12px; padding: 32px; text-align: center; margin-top: 32px; }
         .art-gate-eyebrow { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lavender); margin-bottom: 10px; }
         .art-gate-title { font-family: var(--font-display); font-size: 1.6rem; color: var(--slate); margin-bottom: 8px; }
@@ -108,14 +168,13 @@ export default async function CelebrateArticlePage({
         .art-gate-primary:hover { opacity: 0.9; }
         .art-gate-ghost { background: transparent; color: var(--slate-soft); border: 1px solid rgba(61,57,53,0.2); }
 
-        /* Coming soon */
         .art-coming { text-align: center; padding: 60px 0; }
         .art-coming-icon { font-size: 2.5rem; margin-bottom: 16px; }
         .art-coming-title { font-family: var(--font-display); font-size: 1.6rem; color: var(--slate); margin-bottom: 8px; }
         .art-coming-desc { font-size: 0.9rem; color: var(--slate-ghost); }
 
-        /* Sidebar */
-        .art-sidebar { position: sticky; top: 80px; }
+        .art-sidebar { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 24px; }
+        .art-sidebar-section { display: flex; flex-direction: column; }
         .art-sidebar-title { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--slate-ghost); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
         .art-sidebar-list { display: flex; flex-direction: column; gap: 12px; }
         .art-sidebar-item { display: flex; gap: 12px; text-decoration: none; color: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: white; transition: all 0.15s; }
@@ -139,7 +198,6 @@ export default async function CelebrateArticlePage({
             {article.subtitle && <p className="art-subtitle">{article.subtitle}</p>}
             <p className="art-date">{formatDate(article.publish_date)}</p>
 
-            {/* Coming soon */}
             {isFuture && (
               <div className="art-coming">
                 <div className="art-coming-icon">🏆</div>
@@ -148,7 +206,6 @@ export default async function CelebrateArticlePage({
               </div>
             )}
 
-            {/* Card left + excerpt right */}
             {!isFuture && (
               <div className="art-lede">
                 <div className="art-lede-card">
@@ -161,18 +218,14 @@ export default async function CelebrateArticlePage({
                     />
                   ) : placeholderDiv}
                 </div>
-                {article.excerpt && (
-                  <p className="art-excerpt">{article.excerpt}</p>
-                )}
+                {article.excerpt && <p className="art-excerpt">{article.excerpt}</p>}
               </div>
             )}
 
-            {/* Full body */}
             {!isFuture && canRead && article.body_html && (
               <div className="art-body" dangerouslySetInnerHTML={{ __html: article.body_html }} />
             )}
 
-            {/* Gate — not authenticated */}
             {!isFuture && !canRead && !access.isAuthenticated && (
               <div className="art-gate">
                 <div className="art-gate-eyebrow">Free to read</div>
@@ -185,7 +238,6 @@ export default async function CelebrateArticlePage({
               </div>
             )}
 
-            {/* Gate — authenticated but no early access */}
             {!isFuture && isEarlyAccess && access.isAuthenticated && !access.hasEarlyAccess && (
               <div className="art-gate">
                 <div className="art-gate-eyebrow">Chronicle · Legacy</div>
@@ -199,39 +251,56 @@ export default async function CelebrateArticlePage({
           </main>
 
           {/* ── SIDEBAR ── */}
-          {sidebarArticles.length > 0 && (
-            <aside className="art-sidebar">
-              <div className="art-sidebar-title">More Celebrations</div>
-              <div className="art-sidebar-list">
-                {sidebarArticles.map((s: any) => {
-                  const sf = sidebarFilenameMap[s.story_card_id ?? ""];
-                  return (
-                    <a key={s.ed_cal_id} href={`/celebrate/${s.slug}`} className="art-sidebar-item">
-                      <div className="art-sidebar-img-wrap">
-                        {sf ? (
-                          <img src={`${STORAGE_URL}/${sf}`} alt={s.title} className="art-sidebar-img" />
-                        ) : (
-                          <div className="art-sidebar-ph">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
-                              <rect x="3" y="3" width="18" height="18" rx="2"/>
-                              <circle cx="8.5" cy="8.5" r="1.5"/>
-                              <path d="m21 15-5-5L5 21"/>
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <div className="art-sidebar-body">
-                        <span className="art-sidebar-type">Celebrates</span>
-                        <span className="art-sidebar-name">{s.title}</span>
-                        <span className="art-sidebar-date">{new Date(s.publish_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            </aside>
-          )}
+          <aside className="art-sidebar">
 
+            {/* Gallery — Chronicle+ */}
+            {galleryCards.length > 0 && (
+              <div className="art-sidebar-section">
+                <ArticleGallery
+                  cards={galleryCards}
+                  isAuthenticated={access.isAuthenticated}
+                  hasGalleryAccess={access.hasCelebratesGallery}
+                  storageUrl={STORAGE_URL}
+                  accentColor="var(--lavender)"
+                />
+              </div>
+            )}
+
+            {/* More celebrations */}
+            {sidebarArticles.length > 0 && (
+              <div className="art-sidebar-section">
+                <div className="art-sidebar-title">More Celebrations</div>
+                <div className="art-sidebar-list">
+                  {sidebarArticles.map((s: any) => {
+                    const sf = sidebarFilenameMap[s.story_card_id ?? ""];
+                    return (
+                      <a key={s.ed_cal_id} href={`/celebrate/${s.slug}`} className="art-sidebar-item">
+                        <div className="art-sidebar-img-wrap">
+                          {sf ? (
+                            <img src={`${STORAGE_URL}/${sf}`} alt={s.title} className="art-sidebar-img" />
+                          ) : (
+                            <div className="art-sidebar-ph">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <path d="m21 15-5-5L5 21"/>
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="art-sidebar-body">
+                          <span className="art-sidebar-type">Celebrates</span>
+                          <span className="art-sidebar-name">{s.title}</span>
+                          <span className="art-sidebar-date">{new Date(s.publish_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+          </aside>
         </div>
       </div>
       <Footer />
