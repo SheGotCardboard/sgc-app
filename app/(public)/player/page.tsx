@@ -8,13 +8,16 @@ const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/
 export default async function PlayerPage() {
   const supabase = await createClient();
 
-  // ── Fetch all players ──────────────────────────────────────
+  // ── Fetch visible, non-excluded players only ───────────────
   const { data: playersRaw } = await supabase
     .from("player")
     .select("player_id, first_name, last_name, preferred_name, birthdate, player_status, seo_description, slug, profile_card_id")
+    .eq("is_hidden", false)
+    .eq("is_excluded", false)
     .order("last_name", { ascending: true });
 
   const players = (playersRaw ?? []) as any[];
+  // ... rest of file unchanged
 
   if (players.length === 0) {
     return (
