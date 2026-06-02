@@ -12,7 +12,7 @@ type Props = {
 export default function CardImage({ src, alt, style, placeholder }: Props) {
   const [errored, setErrored] = useState(false);
 
-  if (errored) {
+  if (!src || errored) {
     return <>{placeholder ?? null}</>;
   }
 

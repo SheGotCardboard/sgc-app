@@ -8,23 +8,36 @@ const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/
 export default async function PlayerPage() {
   const supabase = await createClient();
 
-  // ── Fetch visible, non-excluded players only ───────────────
+  // ── 1. Visible, non-excluded players ─────────────────────
   const { data: playersRaw } = await supabase
     .from("player")
-    .select("player_id, first_name, last_name, preferred_name, birthdate, player_status, seo_description, slug, profile_card_id")
+    .select(`
+      player_id,
+      first_name,
+      last_name,
+      preferred_name,
+      birthdate,
+      player_status,
+      seo_description,
+      slug,
+      profile_card_id,
+      card_availability,
+      known_for_team:known_for_team_id (
+        team_name
+      )
+    `)
     .eq("is_hidden", false)
     .eq("is_excluded", false)
     .order("last_name", { ascending: true });
 
   const players = (playersRaw ?? []) as any[];
-  // ... rest of file unchanged
 
   if (players.length === 0) {
     return (
       <div className="sgc-page">
         <Nav activePage="players" />
-        <div style={{ padding: '80px 48px', textAlign: 'center' }}>
-          <p style={{ color: 'var(--slate-ghost)' }}>No players found.</p>
+        <div style={{ padding: "80px 48px", textAlign: "center" }}>
+          <p style={{ color: "var(--slate-ghost)" }}>No players found.</p>
         </div>
         <Footer />
       </div>
@@ -33,7 +46,7 @@ export default async function PlayerPage() {
 
   const playerIds = players.map((p: any) => p.player_id);
 
-  // ── Fetch team/league/sport data ──────────────────────────
+  // ── 2. Most recent team / league / sport ──────────────────
   const { data: teamSeasonsRaw } = await supabase
     .from("player_team_season")
     .select(`
@@ -41,7 +54,11 @@ export default async function PlayerPage() {
       team_season:team_season_id (
         season:season_id (
           season_year,
-          league:league_id ( league_name, abbreviation, sport:sport_id ( sport_name, icon ) )
+          league:league_id (
+            league_name,
+            abbreviation,
+            sport:sport_id ( sport_name, icon )
+          )
         ),
         team:team_id ( team_name )
       )
@@ -50,24 +67,52 @@ export default async function PlayerPage() {
 
   const teamSeasons = (teamSeasonsRaw ?? []) as any[];
 
-  // ── Fetch honors ──────────────────────────────────────────
-  const { data: honorsRaw } = await supabase
-    .from("player_honor")
+  // ── 3. Lookup tables ──────────────────────────────────────
+  const [
+    { data: tiersRaw },
+    { data: categoriesRaw },
+  ] = await Promise.all([
+    supabase
+      .from("achievement_tier")
+      .select("tier_code, tier_name, color_hex, display_order"),
+    supabase
+      .from("achievement_category")
+      .select("tier_code, category_code, category_name"),
+  ]);
+
+  const tierMap: Record<string, { tier_name: string; display_color: string; sort_order: number }> =
+    Object.fromEntries(
+      (tiersRaw ?? []).map((t: any) => [
+        t.tier_code,
+        { tier_name: t.tier_name, display_color: t.color_hex, sort_order: t.display_order },
+      ])
+    );
+
+  const categoryMap: Record<string, string> = Object.fromEntries(
+    (categoriesRaw ?? []).map((c: any) => [
+      `${c.tier_code}-${c.category_code}`,
+      c.category_name,
+    ])
+  );
+
+  // ── 4. Player achievements ────────────────────────────────
+  const { data: achievementsRaw } = await supabase
+    .from("player_achievement")
     .select(`
       player_id,
-      honor:honor_id (
-        honor_name,
-        honor_short_name,
-        honor_code,
-        icon,
-        category:category_id ( value )
+      instance_number,
+      achievement:achievement_id (
+        achievement_id,
+        tier_code,
+        category_code,
+        display
       )
     `)
     .in("player_id", playerIds);
 
-  const honors = (honorsRaw ?? []) as any[];
+  const achievements = (achievementsRaw ?? []) as any[];
 
-  // ── Fetch card filenames ──────────────────────────────────
+  // ── 5. Profile card filenames ─────────────────────────────
   const profileCardIds = players
     .map((p: any) => p.profile_card_id)
     .filter(Boolean) as string[];
@@ -79,66 +124,130 @@ export default async function PlayerPage() {
         .in("card_id", profileCardIds)
     : { data: [] };
 
-  const cards = (cardsRaw ?? []) as any[];
   const cardMap: Record<string, string> = Object.fromEntries(
-    cards.map((c: any) => [c.card_id, c.filename])
+    (cardsRaw ?? []).map((c: any) => [c.card_id, c.filename])
   );
 
-  // ── Assemble player data ──────────────────────────────────
+  // ── 5b. Card availability de_ids for placeholder resolution ──
+  // player.card_availability is TEXT storing the 'value' slug from card_availability_lkp
+  const availabilityValues = players
+    .map((p: any) => p.card_availability)
+    .filter(Boolean) as string[];
+
+  const { data: availabilityRaw } = availabilityValues.length > 0
+    ? await supabase
+        .from("card_availability_lkp")
+        .select("value, de_id")
+        .in("value", availabilityValues)
+    : { data: [] };
+
+  // Map: value slug → de_id (e.g. "needle-in-a-haystack" → "PCA01")
+  const availabilityMap: Record<string, string> = Object.fromEntries(
+    (availabilityRaw ?? []).map((a: any) => [a.value, a.de_id])
+  );
+
+  // ── 6. Assemble ───────────────────────────────────────────
   const assembled = players.map((player: any) => {
-    const pts = teamSeasons.filter((ts: any) => ts.player_id === player.player_id);
+    // Most recent season
+    const pts = teamSeasons
+      .filter((ts: any) => ts.player_id === player.player_id)
+      .sort((a: any, b: any) =>
+        (b.team_season?.season?.season_year ?? 0) -
+        (a.team_season?.season?.season_year ?? 0)
+      );
+    const mostRecent = pts[0] ?? null;
 
-    const teams = pts.map((ts: any) => ({
-      team_name: ts.team_season?.team?.team_name ?? "—",
-      league_name: ts.team_season?.season?.league?.league_name ?? "—",
-      league_abbrev: ts.team_season?.season?.league?.abbreviation ?? null,
-      season_year: ts.team_season?.season?.season_year ?? 0,
-      sport_name: ts.team_season?.season?.league?.sport?.sport_name ?? null,
-      sport_icon: ts.team_season?.season?.league?.sport?.icon ?? null,
-    })).sort((a: any, b: any) => b.season_year - a.season_year);
+    const knownForTeam =
+      player.known_for_team?.team_name ??
+      mostRecent?.team_season?.team?.team_name ??
+      null;
 
-    const mostRecent = teams[0] ?? null;
+    // Achievement chips
+    const playerAchievements = achievements
+      .filter((a: any) => a.player_id === player.player_id)
+      .filter((a: any) => {
+        const d = a.achievement?.display;
+        return d === "full" || d === "list";
+      });
 
-    const playerHonors = honors
-      .filter((h: any) => h.player_id === player.player_id)
-      .map((h: any) => ({
-        honor_name: h.honor?.honor_name ?? "—",
-        honor_short_name: h.honor?.honor_short_name ?? null,
-        honor_code: h.honor?.honor_code ?? "",
-        category_value: h.honor?.category?.value ?? "",
-        icon: h.honor?.icon ?? null,
-      }));
+    const chipMap: Record<string, {
+      tier_code:     string;
+      tier_sort:     number;
+      display_color: string;
+      category_name: string;
+      count:         number;
+    }> = {};
 
-    // Deduplicate honors by honor_code for display
-    const uniqueHonors = playerHonors.filter(
-      (h: any, i: number, arr: any[]) =>
-        arr.findIndex((x: any) => x.honor_code === h.honor_code) === i
+    playerAchievements.forEach((a: any) => {
+      const tier_code     = a.achievement?.tier_code ?? "";
+      const category_code = a.achievement?.category_code ?? "";
+      const key           = `${tier_code}-${category_code}`;
+      const tier          = tierMap[tier_code];
+      const cat_name      = categoryMap[key] ?? "—";
+
+      if (!chipMap[key]) {
+        chipMap[key] = {
+          tier_code,
+          tier_sort:     tier?.sort_order ?? 99,
+          display_color: tier?.display_color ?? "#888",
+          category_name: cat_name,
+          count:         0,
+        };
+      }
+      chipMap[key].count += 1;
+    });
+
+    const chips = Object.values(chipMap).sort(
+      (a, b) => a.tier_sort - b.tier_sort
     );
 
+    // ── Card image resolution ─────────────────────────────
+    // 1. Has a profile card → use its filename
+    // 2. Has availability assessment → use pca de_id as filename
+    // 3. Neither → pca_null
+    let card_filename: string;
+    if (player.profile_card_id && cardMap[player.profile_card_id]) {
+      card_filename = cardMap[player.profile_card_id];
+    } else if (player.card_availability) {
+      const deId = availabilityMap[player.card_availability];
+      card_filename = deId
+        ? `${deId.toLowerCase()}.webp`
+        : "pca_null.webp";
+    } else {
+      card_filename = "pca_null.webp";
+    }
+
     return {
-      player_id: player.player_id,
-      first_name: player.first_name,
-      last_name: player.last_name,
-      preferred_name: player.preferred_name,
-      birthdate: player.birthdate,
-      player_status: player.player_status,
-      seo_description: player.seo_description,
-      slug: player.slug,
-      sport_name: mostRecent?.sport_name ?? null,
-      sport_icon: mostRecent?.sport_icon ?? null,
-      most_recent_team: mostRecent?.team_name ?? null,
-      most_recent_league: mostRecent?.league_name ?? null,
-      most_recent_league_abbrev: mostRecent?.league_abbrev ?? null,
-      card_filename: player.profile_card_id ? (cardMap[player.profile_card_id] ?? null) : null,
-      honors: uniqueHonors,
-      teams: teams.map((t: any) => ({
-        team_name: t.team_name,
-        league_name: t.league_name,
-        league_abbrev: t.league_abbrev,
-        season_year: t.season_year,
-      })),
+      player_id:                 player.player_id,
+      first_name:                player.first_name,
+      last_name:                 player.last_name,
+      preferred_name:            player.preferred_name,
+      birthdate:                 player.birthdate,
+      player_status:             player.player_status,
+      seo_description:           player.seo_description,
+      slug:                      player.slug,
+      sport_name:                mostRecent?.team_season?.season?.league?.sport?.sport_name ?? null,
+      sport_icon:                mostRecent?.team_season?.season?.league?.sport?.icon ?? null,
+      most_recent_league:        mostRecent?.team_season?.season?.league?.league_name ?? null,
+      most_recent_league_abbrev: mostRecent?.team_season?.season?.league?.abbreviation ?? null,
+      most_recent_team:          mostRecent?.team_season?.team?.team_name ?? null,
+      known_for_team:            knownForTeam,
+      card_filename,             // always a filename — never null
+      achievement_chips:         chips,
+      achievement_total:         playerAchievements.length,
     };
   });
+
+  // ── 7. Sport list for dropdown ────────────────────────────
+  const { data: sportsRaw } = await supabase
+    .from("sport")
+    .select("sport_name, sort_order, icon")
+    .order("sort_order", { ascending: true })
+    .order("sport_name",  { ascending: true });
+
+  const sports       = (sportsRaw ?? []) as any[];
+  const pinnedSports = sports.filter((s: any) => s.sort_order < 99);
+  const alphaSports  = sports.filter((s: any) => s.sort_order >= 99);
 
   return (
     <div className="sgc-page">
@@ -158,13 +267,15 @@ export default async function PlayerPage() {
           <p className="player-page-kicker">Player Directory</p>
           <h1 className="player-page-title">Meet the Players</h1>
           <p className="player-page-desc">
-            The women behind the cards. Click any player to see their full profile.
+            The women behind the cards. Click any player to see their profile.
           </p>
           <p className="player-count">{assembled.length} players in the SGC database</p>
         </div>
 
         <PlayerAccordion
           players={assembled}
+          pinnedSports={pinnedSports}
+          alphaSports={alphaSports}
           isAuthenticated={false}
           storageUrl={STORAGE_URL}
         />
