@@ -53,16 +53,14 @@ const TIER_CLASS: Record<string, string> = {
   I: "chip-i", II: "chip-ii", III: "chip-iii", IV: "chip-iv", V: "chip-v",
 };
 
-// Keys must match ed_type_lkp.label values (lowercased)
 const ED_TYPE_COLORS: Record<string, string> = {
-  "player spotlight": "#d97757",   // terracotta
-  "sgc celebrates":   "#9b88c4",   // plum
-  "sgc selects":      "#34567A",   // steel navy
-  "sgc wire":         "#4a7856",   // forest
-  "collecting 101":   "#8B6914",   // copper
+  "player spotlight": "#d97757",
+  "sgc celebrates":   "#9b88c4",
+  "sgc selects":      "#34567A",
+  "sgc wire":         "#4a7856",
+  "collecting 101":   "#8B6914",
 };
 
-// Muted versions for "Also mentioned in" section
 const ED_TYPE_COLORS_MUTED: Record<string, string> = {
   "player spotlight": "#c4a090",
   "sgc celebrates":   "#b8aad4",
@@ -91,8 +89,8 @@ export default async function PlayerSlugPage({
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(1);
-    const tier = subRows?.[0]?.tier_slug as MemberTier | null;
-    memberTier = tier ?? "story"; // logged in but no subscription = story (free)
+    const tier = (subRows?.[0] as any)?.tier_slug as MemberTier | null;
+    memberTier = tier ?? "story";
   }
 
   // ── 1. Player ─────────────────────────────────────────────
@@ -145,7 +143,6 @@ export default async function PlayerSlugPage({
   const mostRecent  = teams[0] ?? null;
   const seasonCount = new Set(teams.map((t: any) => t.season_year)).size;
 
-  // Group teams by league for career history
   const teamMap: Record<string, { league: string; abbrev: string | null; teamAbbrev: string | null; years: number[] }> = {};
   for (const t of teams) {
     const key = `${t.team_name}||${t.league_name}`;
@@ -284,7 +281,6 @@ export default async function PlayerSlugPage({
   }
   const sortedTiers = Object.entries(tierGroups).sort((a, b) => a[1].tier_sort - b[1].tier_sort);
 
-  // Helper: group achievement rows by achievement_id, collecting years
   function groupAchievementRows(rows: any[]): any[] {
     const grouped: Record<string, any> = {};
     for (const row of rows) {
@@ -295,7 +291,6 @@ export default async function PlayerSlugPage({
         if (row.year && !grouped[key].years.includes(row.year)) {
           grouped[key].years.push(row.year);
         }
-        // Use most recent context if multiple
         if (row.context) grouped[key].context = row.context;
       }
     }
@@ -305,7 +300,6 @@ export default async function PlayerSlugPage({
     }));
   }
 
-  // Dominant dimension — count by dimension, pick highest
   const dimensionCounts: Record<string, number> = {};
   for (const a of achievements) {
     if (a.dimension) {
@@ -324,7 +318,8 @@ export default async function PlayerSlugPage({
     Muse:     "#D4622A",
   };
 
-  const chipMap: Record<string, { tier_code: string; display_color: string; category_name: string; count: number; tier_sort: number }> = {};
+  // Fix: category_sort included in type
+  const chipMap: Record<string, { tier_code: string; display_color: string; category_name: string; count: number; tier_sort: number; category_sort: number }> = {};
   for (const a of achievements) {
     const key = `${a.tier_code}-${a.category_code}`;
     if (!chipMap[key]) chipMap[key] = { tier_code: a.tier_code, display_color: a.display_color, category_name: a.category_name, tier_sort: a.tier_sort, category_sort: a.category_sort, count: 0 };
@@ -333,88 +328,44 @@ export default async function PlayerSlugPage({
   const chips = Object.values(chipMap).sort((a, b) => a.tier_sort - b.tier_sort);
 
   // ── 6. SGC Editorials ─────────────────────────────────────
-  // Source 1: ed_calendar.subject_id = player_id → player is PRIMARY subject
-  // Source 2: ed_subjects where subject_id = player_id AND
-  //           ed_rel_type_id = '1b1d33d3-7d15-4d15-9928-61c66602bd56' → featured mention
-
   const [{ data: primaryEditorialsRaw }, { data: mentionedEditorialsRaw }] = await Promise.all([
-
-    // Primary: player is the main subject of the article
     supabase
       .from("ed_calendar")
-      .select(`
-        ed_cal_id,
-        title,
-        slug,
-        publish_date,
-        is_hidden,
-        ed_type:ed_type_id ( label )
-      `)
+      .select(`ed_cal_id, title, slug, publish_date, is_hidden, ed_type:ed_type_id ( label )`)
       .eq("subject_id", player.player_id)
       .eq("is_hidden", false)
       .order("publish_date", { ascending: false }),
-
-    // Mentioned: player is featured in someone else's article
     supabase
       .from("ed_subjects")
-      .select(`
-        editorial:ed_cal_id (
-          ed_cal_id,
-          title,
-          slug,
-          publish_date,
-          is_hidden,
-          ed_type:ed_type_id ( label )
-        )
-      `)
+      .select(`editorial:ed_cal_id ( ed_cal_id, title, slug, publish_date, is_hidden, ed_type:ed_type_id ( label ) )`)
       .eq("subject_id", player.player_id)
       .eq("ed_rel_type_id", "1b1d33d3-7d15-4d15-9928-61c66602bd56")
       .order("created_at", { ascending: false }),
   ]);
 
-  const editorials = (primaryEditorialsRaw ?? [])
-    .map((e: any) => ({
-      title:     e.title,
-      slug:      e.slug,
-      type_name: e.ed_type?.label ?? "feature",
-    }));
-
+  const editorials = (primaryEditorialsRaw ?? []).map((e: any) => ({
+    title: e.title, slug: e.slug, type_name: e.ed_type?.label ?? "feature",
+  }));
   const editorialsMentioned = (mentionedEditorialsRaw ?? [])
     .filter((e: any) => e.editorial && !e.editorial.is_hidden)
     .map((e: any) => ({
-      title:     e.editorial.title,
-      slug:      e.editorial.slug,
-      type_name: e.editorial.ed_type?.label ?? "feature",
+      title: e.editorial.title, slug: e.editorial.slug, type_name: e.editorial.ed_type?.label ?? "feature",
     }));
-
   const allEditorials = [...editorials, ...editorialsMentioned];
 
-  // ── 7. Profile card + placeholder resolution ──────────────
-  // Fetch real card if assigned
+  // ── 7. Profile card ───────────────────────────────────────
   const { data: cardRaw } = player.profile_card_id
-    ? await supabase
-        .from("card")
-        .select("card_id, filename, card_number")
-        .eq("card_id", player.profile_card_id)
-        .single()
+    ? await supabase.from("card").select("card_id, filename, card_number").eq("card_id", player.profile_card_id).single()
     : { data: null };
   const card = cardRaw as any;
 
-  // Resolve display filename — same logic as player list
   let cardFilename: string;
   if (card?.filename) {
     cardFilename = card.filename;
   } else if (player.card_availability) {
-    // card_availability is TEXT storing the value slug — join to lkp to get de_id
-    const { data: lkpRaw } = await supabase
-      .from("card_availability_lkp")
-      .select("de_id")
-      .eq("value", player.card_availability)
-      .single();
+    const { data: lkpRaw } = await supabase.from("card_availability_lkp").select("de_id").eq("value", player.card_availability).single();
     const lkp = lkpRaw as any;
-    cardFilename = lkp?.de_id
-      ? `${lkp.de_id.toLowerCase()}.webp`
-      : "pca_null.webp";
+    cardFilename = lkp?.de_id ? `${lkp.de_id.toLowerCase()}.webp` : "pca_null.webp";
   } else {
     cardFilename = "pca_null.webp";
   }
@@ -439,14 +390,14 @@ export default async function PlayerSlugPage({
   const canChronicle = canAccess(memberTier, "chronicle");
   const canLegacy    = canAccess(memberTier, "legacy");
 
-  // ── Pantheon summary (for CTA link) ──────────────────────
+  // ── Pantheon summary ──────────────────────────────────────
   const { data: pantheonRaw } = await supabase
     .from("pantheon_player_summary")
     .select("is_panthelete, total_score, dominant_dimension")
     .eq("player_id", player.player_id)
     .limit(1);
-  const pantheon = pantheonRaw?.[0] ?? null;
-  const isPanthelete = pantheon?.is_panthelete ?? false;
+  const pantheon = (pantheonRaw as any)?.[0] ?? null;
+  const isPanthelete = (pantheon as any)?.is_panthelete ?? false;
   const hasScore = pantheon !== null;
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-US", {
@@ -471,25 +422,9 @@ export default async function PlayerSlugPage({
         .pp-back { font-size: 0.8rem; color: var(--slate-ghost); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 24px 32px 16px; transition: color 0.15s; }
         .pp-back:hover { color: var(--terracotta); }
         .player-page { background: var(--warm-white); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-
-        .pp-hero {
-          background: linear-gradient(135deg, var(--slate) 0%, #4a4540 100%);
-          padding: 32px 36px; color: white;
-          display: flex; align-items: center; gap: 24px;
-          position: relative; overflow: hidden;
-        }
-        .pp-hero::after {
-          content: ''; position: absolute; right: -40px; top: -40px;
-          width: 200px; height: 200px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(217,119,87,0.15) 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .pp-avatar {
-          width: 88px; height: 88px; border-radius: 50%;
-          background: var(--parchment); border: 3px solid rgba(255,255,255,0.2);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 36px; flex-shrink: 0; z-index: 1; overflow: hidden;
-        }
+        .pp-hero { background: linear-gradient(135deg, var(--slate) 0%, #4a4540 100%); padding: 32px 36px; color: white; display: flex; align-items: center; gap: 24px; position: relative; overflow: hidden; }
+        .pp-hero::after { content: ''; position: absolute; right: -40px; top: -40px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(217,119,87,0.15) 0%, transparent 70%); pointer-events: none; }
+        .pp-avatar { width: 88px; height: 88px; border-radius: 50%; background: var(--parchment); border: 3px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 36px; flex-shrink: 0; z-index: 1; overflow: hidden; }
         .pp-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
         .pp-hero-info { flex: 1; z-index: 1; }
         .pp-name { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.1; margin-bottom: 6px; }
@@ -497,61 +432,41 @@ export default async function PlayerSlugPage({
         .pp-hero-dot { opacity: 0.4; }
         .pp-hero-stats { display: flex; gap: 28px; z-index: 1; flex-shrink: 0; }
         .pp-stat { text-align: center; }
-        .pp-stat-num   { font-family: var(--font-display); font-size: 28px; color: var(--terracotta); line-height: 1; }
+        .pp-stat-num { font-family: var(--font-display); font-size: 28px; color: var(--terracotta); line-height: 1; }
         .pp-stat-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-top: 4px; }
         @media (max-width: 600px) { .pp-hero { flex-direction: column; align-items: flex-start; } .pp-hero-stats { gap: 16px; } }
-
         .pp-section { padding: 24px 32px; border-bottom: 1px solid var(--border); }
         .pp-section:last-child { border-bottom: none; }
-        .pp-section-label {
-          font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
-          color: var(--slate-ghost); margin-bottom: 16px;
-          display: flex; align-items: center; gap: 8px;
-        }
+        .pp-section-label { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--slate-ghost); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
         .pp-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
         .bio-grid { display: grid; grid-template-columns: 160px 1fr 220px; gap: 24px; align-items: start; }
         @media (max-width: 800px) { .bio-grid { grid-template-columns: 1fr; } }
-
-        .profile-card {
-          width: 160px; height: 224px; border-radius: 10px;
-          background: linear-gradient(160deg, var(--parchment) 0%, #ddd4c4 100%);
-          border: 1px solid var(--border-strong);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 8px; position: relative; overflow: hidden; cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
+        .profile-card { width: 160px; height: 224px; border-radius: 10px; background: linear-gradient(160deg, var(--parchment) 0%, #ddd4c4 100%); border: 1px solid var(--border-strong); box-shadow: 0 4px 16px rgba(0,0,0,0.12); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; position: relative; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
         .profile-card:hover { transform: translateY(-3px) rotate(0.5deg); box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
         .profile-card img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 10px; }
         .profile-card-set { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 8px; font-weight: 700; color: var(--slate-soft); background: rgba(250,248,245,0.9); padding: 5px 4px; border-top: 1px solid rgba(224,216,208,0.6); line-height: 1.3; }
-
         .bio-text { font-size: 13px; color: var(--slate-soft); line-height: 1.8; }
-
         .demo-card { background: var(--soft-cream); border-radius: 10px; padding: 12px 16px; border: 1px solid var(--border); }
         .demo-row { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 1px solid rgba(224,216,208,0.5); gap: 8px; }
         .demo-row:last-child { border-bottom: none; }
         .demo-key { font-size: 9px; font-weight: 700; color: var(--slate-ghost); text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
         .demo-val { font-size: 12px; font-weight: 600; color: var(--slate); text-align: right; }
-
         .ed-links { display: flex; flex-direction: column; gap: 6px; }
         .ed-link { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: var(--soft-cream); cursor: pointer; transition: background 0.12s, transform 0.1s; text-decoration: none; }
         .ed-link:hover { background: var(--parchment); transform: translateX(3px); }
         .ed-type { font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; color: white; flex-shrink: 0; }
         .ed-title { font-size: 13px; font-weight: 600; color: var(--slate); flex: 1; }
         .ed-arrow { font-size: 12px; color: var(--slate-ghost); }
-
         .career-block { margin-bottom: 8px; }
         .career-team-hdr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: var(--soft-cream); }
         .ct-abbr { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; background: var(--terracotta); color: white; min-width: 40px; text-align: center; }
-        .ct-name    { font-size: 13px; font-weight: 700; color: var(--slate); flex: 1; }
-        .ct-years   { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--slate-soft); }
+        .ct-name { font-size: 13px; font-weight: 700; color: var(--slate); flex: 1; }
+        .ct-years { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--slate-soft); }
         .ct-seasons { font-size: 11px; color: var(--slate-ghost); }
         .ct-teammates { padding: 8px 14px 8px 62px; display: flex; flex-wrap: wrap; gap: 5px; }
         .teammate { font-size: 10px; font-weight: 600; color: var(--slate-soft); background: white; padding: 3px 10px; border-radius: 16px; border: 1px solid var(--border); cursor: pointer; transition: all 0.12s; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
         .teammate:hover { border-color: var(--terracotta); color: var(--terracotta); }
         .teammate-yrs { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--slate-ghost); }
-
         .card-gallery { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
         .card-stub { width: 88px; height: 123px; border-radius: 8px; background: linear-gradient(160deg, var(--parchment) 0%, #ddd4c4 100%); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.15s, box-shadow 0.15s; overflow: hidden; flex-shrink: 0; }
         .card-stub img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
@@ -560,11 +475,10 @@ export default async function PlayerSlugPage({
         .card-stub.blurred { filter: blur(5px); cursor: default; }
         .card-stub.blurred:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
         .gallery-upgrade { width: 160px; height: 123px; border-radius: 8px; background: var(--soft-cream); border: 1px dashed var(--border-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px; text-align: center; flex-shrink: 0; }
-        .gallery-upgrade-tier  { font-size: 8px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--slate-ghost); }
+        .gallery-upgrade-tier { font-size: 8px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--slate-ghost); }
         .gallery-upgrade-title { font-family: var(--font-display); font-size: 13px; color: var(--slate); line-height: 1.2; }
-        .gallery-upgrade-desc  { font-size: 9px; color: var(--slate-soft); line-height: 1.4; }
-        .gallery-upgrade-btn   { font-size: 9px; font-weight: 800; padding: 5px 12px; border-radius: 20px; background: #9b88c4; color: white; text-decoration: none; display: inline-block; }
-
+        .gallery-upgrade-desc { font-size: 9px; color: var(--slate-soft); line-height: 1.4; }
+        .gallery-upgrade-btn { font-size: 9px; font-weight: 800; padding: 5px 12px; border-radius: 20px; background: #9b88c4; color: white; text-decoration: none; display: inline-block; }
         .ach-intro { font-size: 12px; color: var(--slate-soft); line-height: 1.6; margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background: var(--soft-cream); border-left: 3px solid #34567A; }
         .ach-intro strong { color: var(--slate); }
         .ach-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 16px; }
@@ -577,17 +491,16 @@ export default async function PlayerSlugPage({
         .chip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
         .dot-i{background:#8B2252;}.dot-ii{background:#34567A;}.dot-iii{background:#1A7A6D;}.dot-iv{background:#8B6914;}.dot-v{background:#6B7A3A;}
         .chip-count{font-weight:800;}
-
         .tier-groups { display: flex; flex-direction: column; gap: 6px; }
         .tier-group { border-radius: 10px; border: 1px solid var(--border); overflow: hidden; }
         .tier-hdr { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; background: var(--warm-white); transition: background 0.1s; }
         .tier-hdr:hover { background: var(--soft-cream); }
         .tier-badge { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; color: white; min-width: 28px; text-align: center; letter-spacing: 0.03em; }
         .b-i{background:#8B2252;}.b-ii{background:#34567A;}.b-iii{background:#1A7A6D;}.b-iv{background:#8B6914;}.b-v{background:#6B7A3A;}
-        .tier-name  { font-family: var(--font-display); font-size: 14px; flex: 1; color: var(--slate); }
+        .tier-name { font-family: var(--font-display); font-size: 14px; flex: 1; color: var(--slate); }
         .tier-count { font-size: 10px; font-weight: 700; color: var(--slate-soft); background: var(--soft-cream); padding: 2px 8px; border-radius: 10px; }
-        .tier-chev  { font-size: 12px; color: var(--slate-ghost); transition: transform 0.2s; }
-        .tier-body  { border-top: 1px solid var(--border); }
+        .tier-chev { font-size: 12px; color: var(--slate-ghost); transition: transform 0.2s; }
+        .tier-body { border-top: 1px solid var(--border); }
         .cat-hdr { padding: 10px 16px 4px; font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--slate-ghost); border-top: 1px solid rgba(224,216,208,0.4); }
         .cat-hdr:first-child { border-top: none; }
         .honor-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-top: 1px solid rgba(224,216,208,0.25); transition: background 0.1s; }
@@ -596,7 +509,7 @@ export default async function PlayerSlugPage({
         .ic-i{background:#F2E3EB;}.ic-ii{background:#E2EAF2;}.ic-iii{background:#DFF0ED;}.ic-iv{background:#F2ECDA;}.ic-v{background:#EDF0E2;}
         .honor-info { flex: 1; min-width: 0; }
         .honor-name { font-size: 14px; font-weight: 600; color: var(--slate); line-height: 1.3; }
-        .honor-sub  { font-size: 11px; color: var(--slate-soft); margin-top: 2px; letter-spacing: 0.01em; }
+        .honor-sub { font-size: 11px; color: var(--slate-soft); margin-top: 2px; letter-spacing: 0.01em; }
         .honor-years { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
         .yr { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
         .yr-i{background:#F2E3EB;color:#8B2252;}.yr-ii{background:#E2EAF2;color:#34567A;}
@@ -605,13 +518,12 @@ export default async function PlayerSlugPage({
         .honor-locked-row:hover { opacity: 0.9; }
         .honor-locked-icon { font-size: 12px; }
         .honor-locked-text { font-size: 11px; color: var(--slate-soft); flex: 1; font-style: italic; }
-        .honor-locked-cta  { font-size: 9px; font-weight: 800; color: #8B2252; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; text-decoration: none; }
+        .honor-locked-cta { font-size: 9px; font-weight: 800; color: #8B2252; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; text-decoration: none; }
         .ach-upgrade { padding: 24px; border-radius: 10px; background: var(--soft-cream); border: 1px solid var(--border); text-align: center; margin-top: 4px; }
-        .ach-upgrade-tier  { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--slate-ghost); margin-bottom: 8px; }
+        .ach-upgrade-tier { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--slate-ghost); margin-bottom: 8px; }
         .ach-upgrade-title { font-family: var(--font-display); font-size: 20px; color: var(--slate); margin-bottom: 8px; }
-        .ach-upgrade-desc  { font-size: 13px; color: var(--slate-soft); line-height: 1.6; margin-bottom: 16px; }
-        .ach-upgrade-btn   { display: inline-block; padding: 9px 22px; border-radius: 9px; background: #34567A; color: white; font-size: 12px; font-weight: 800; text-decoration: none; }
-
+        .ach-upgrade-desc { font-size: 13px; color: var(--slate-soft); line-height: 1.6; margin-bottom: 16px; }
+        .ach-upgrade-btn { display: inline-block; padding: 9px 22px; border-radius: 9px; background: #34567A; color: white; font-size: 12px; font-weight: 800; text-decoration: none; }
         .dim-inner { padding: 18px 20px; border-radius: 12px; background: var(--soft-cream); border: 1px solid var(--border); }
         .dim-intro { font-size: 13px; color: var(--slate-soft); line-height: 1.75; margin-bottom: 14px; }
         .dim-statements { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
@@ -620,7 +532,6 @@ export default async function PlayerSlugPage({
         .dc-champion{background:#B5333E;}.dc-pioneer{background:#1A7A6D;}.dc-legend{background:#6B3A7A;}
         .dc-advocate{background:#B57A14;}.dc-sage{background:#3A4A8B;}.dc-muse{background:#D4622A;}
         .dim-locked { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--slate-ghost); padding-top: 12px; border-top: 1px solid var(--border); }
-
         @media (max-width: 768px) { .pp-section { padding: 20px; } .bio-grid { grid-template-columns: 1fr; } }
       `}</style>
 
@@ -663,31 +574,12 @@ export default async function PlayerSlugPage({
                 </div>
               )}
             </div>
-
-            {/* ── Pantheon CTA ── */}
-            {/* Show gold badge if confirmed Panthelete, subtle link otherwise for Legacy users */}
             {isPanthelete ? (
-              <a href={`/pantheon?player=${player.slug}`} style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "#e8b44c", textDecoration: "none",
-                padding: "5px 14px",
-                border: "1px solid rgba(232,180,76,0.35)",
-                borderRadius: 20, background: "rgba(232,180,76,0.08)",
-                marginTop: 8, zIndex: 1,
-              }}>
+              <a href={`/pantheon?player=${player.slug}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#e8b44c", textDecoration: "none", padding: "5px 14px", border: "1px solid rgba(232,180,76,0.35)", borderRadius: 20, background: "rgba(232,180,76,0.08)", marginTop: 8, zIndex: 1 }}>
                 ★ View Pantheon Profile →
               </a>
             ) : canLegacy ? (
-              <a href={`/pantheon?player=${player.slug}`} style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                fontSize: "0.75rem", fontWeight: 600,
-                color: "rgba(255,255,255,0.5)", textDecoration: "none",
-                padding: "5px 14px",
-                border: "1px solid rgba(255,255,255,0.15)",
-                borderRadius: 20, marginTop: 8, zIndex: 1,
-              }}>
+              <a href={`/pantheon?player=${player.slug}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.75rem", fontWeight: 600, color: "rgba(255,255,255,0.5)", textDecoration: "none", padding: "5px 14px", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, marginTop: 8, zIndex: 1 }}>
                 ★ Pantheon →
               </a>
             ) : null}
@@ -697,21 +589,15 @@ export default async function PlayerSlugPage({
           <div className="pp-section">
             <div className="pp-section-label">About</div>
             <div className="bio-grid">
-
-              {/* Profile card — always renders */}
               <div className="profile-card">
                 <img src={cardImageSrc} alt={displayName} />
                 {hasRealCard && card?.card_number && (
                   <div className="profile-card-set">#{card.card_number}</div>
                 )}
               </div>
-
-              {/* Bio */}
               {player.seo_description && (
                 <div className="bio-text">{player.seo_description}</div>
               )}
-
-              {/* Fact sheet */}
               <div className="demo-card">
                 {player.birthdate && (
                   <div className="demo-row">
@@ -742,7 +628,6 @@ export default async function PlayerSlugPage({
                   <span className="demo-val">{statusLabel}</span>
                 </div>
               </div>
-
             </div>
           </div>
 
@@ -750,40 +635,24 @@ export default async function PlayerSlugPage({
           {allEditorials.length > 0 && (
             <div className="pp-section">
               <div className="pp-section-label">SGC Editorials</div>
-
-              {/* Featured — she is the primary subject */}
               {editorials.length > 0 && (
                 <div className="ed-links">
                   {editorials.map((ed: any, i: number) => (
                     <a key={i} href={`/editorial/${ed.slug}`} className="ed-link">
-                      <span
-                        className="ed-type"
-                        style={{ background: ED_TYPE_COLORS[ed.type_name?.toLowerCase()] ?? "#8a8580" }}
-                      >
-                        {ed.type_name ?? "Editorial"}
-                      </span>
+                      <span className="ed-type" style={{ background: ED_TYPE_COLORS[ed.type_name?.toLowerCase()] ?? "#8a8580" }}>{ed.type_name ?? "Editorial"}</span>
                       <span className="ed-title">{ed.title}</span>
                       <span className="ed-arrow">→</span>
                     </a>
                   ))}
                 </div>
               )}
-
-              {/* Associated — she is mentioned */}
               {editorialsMentioned.length > 0 && (
                 <div style={{ marginTop: editorials.length > 0 ? "12px" : "0" }}>
-                  <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--slate-ghost)", marginBottom: "6px" }}>
-                    Also mentioned in
-                  </div>
+                  <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--slate-ghost)", marginBottom: "6px" }}>Also mentioned in</div>
                   <div className="ed-links">
                     {editorialsMentioned.map((ed: any, i: number) => (
                       <a key={i} href={`/editorial/${ed.slug}`} className="ed-link" style={{ opacity: 0.75 }}>
-                        <span
-                          className="ed-type"
-                          style={{ background: ED_TYPE_COLORS_MUTED[ed.type_name?.toLowerCase()] ?? "#a8a49f" }}
-                        >
-                          {ed.type_name ?? "Editorial"}
-                        </span>
+                        <span className="ed-type" style={{ background: ED_TYPE_COLORS_MUTED[ed.type_name?.toLowerCase()] ?? "#a8a49f" }}>{ed.type_name ?? "Editorial"}</span>
                         <span className="ed-title">{ed.title}</span>
                         <span className="ed-arrow">→</span>
                       </a>
@@ -803,15 +672,11 @@ export default async function PlayerSlugPage({
                   {leagueTeams.map((t, j) => {
                     const yearsSpan  = t.from === t.to ? String(t.from) : `${t.from}–${t.to}`;
                     const numSeasons = t.to - t.from + 1;
-                    const teamMates  = teammates.filter(tm =>
-                      tm.years.some(y => y >= t.from && y <= t.to)
-                    );
+                    const teamMates  = teammates.filter(tm => tm.years.some(y => y >= t.from && y <= t.to));
                     return (
                       <div key={j}>
                         <div className="career-team-hdr">
-                          <span className="ct-abbr">
-                            {t.teamAbbrev ?? leagueMeta[league]?.abbrev ?? league.slice(0,4).toUpperCase()}
-                          </span>
+                          <span className="ct-abbr">{t.teamAbbrev ?? leagueMeta[league]?.abbrev ?? league.slice(0,4).toUpperCase()}</span>
                           <span className="ct-name">{t.team}</span>
                           <span className="ct-years">{yearsSpan}</span>
                           <span className="ct-seasons">{numSeasons} {numSeasons === 1 ? "season" : "seasons"}</span>
@@ -822,9 +687,7 @@ export default async function PlayerSlugPage({
                               const overlapping = tm.years.filter(y => y >= t.from && y <= t.to);
                               const minY = Math.min(...overlapping);
                               const maxY = Math.max(...overlapping);
-                              const yLabel = minY === maxY
-                                ? String(minY).slice(2)
-                                : `${String(minY).slice(2)}–${String(maxY).slice(2)}`;
+                              const yLabel = minY === maxY ? String(minY).slice(2) : `${String(minY).slice(2)}–${String(maxY).slice(2)}`;
                               return (
                                 <a key={k} href={`/player/${tm.slug}`} className="teammate">
                                   {tm.display_name}
@@ -850,10 +713,7 @@ export default async function PlayerSlugPage({
                 {canChronicle ? (
                   galleryCards.map((g: any, i: number) => (
                     <div key={i} className="card-stub">
-                      {g.card?.filename
-                        ? <img src={`${STORAGE_URL}/${g.card.filename}`} alt={g.card.set_name ?? "Card"} />
-                        : <span>🃏</span>
-                      }
+                      {g.card?.filename ? <img src={`${STORAGE_URL}/${g.card.filename}`} alt={g.card.set_name ?? "Card"} /> : <span>🃏</span>}
                       {g.card?.set_name && <div className="card-stub-label">{g.card.set_name}</div>}
                     </div>
                   ))
@@ -861,18 +721,13 @@ export default async function PlayerSlugPage({
                   <>
                     {galleryCards.slice(0, 3).map((g: any, i: number) => (
                       <div key={i} className="card-stub blurred">
-                        {g.card?.filename
-                          ? <img src={`${STORAGE_URL}/${g.card.filename}`} alt="Card preview" />
-                          : <span>🃏</span>
-                        }
+                        {g.card?.filename ? <img src={`${STORAGE_URL}/${g.card.filename}`} alt="Card preview" /> : <span>🃏</span>}
                       </div>
                     ))}
                     <div className="gallery-upgrade">
                       <div className="gallery-upgrade-tier">Chronicle · Legacy</div>
                       <div className="gallery-upgrade-title">Full card gallery</div>
-                      <div className="gallery-upgrade-desc">
-                        See every card in this gallery — Chronicle members unlock the full set.
-                      </div>
+                      <div className="gallery-upgrade-desc">See every card in this gallery — Chronicle members unlock the full set.</div>
                       <a href="/membership" className="gallery-upgrade-btn">Upgrade to Chronicle →</a>
                     </div>
                   </>
@@ -889,15 +744,14 @@ export default async function PlayerSlugPage({
                 <>
                   <div className="ach-intro">
                     <strong>The Chronicle</strong> — all achievements by tier with years and detail.{" "}
-                    <strong>The Legacy</strong> adds Achievements Level 3: the full dossier including
-                    All-Star selections, cultural honors, media presence, and more.
+                    <strong>The Legacy</strong> adds Achievements Level 3: the full dossier including All-Star selections, cultural honors, media presence, and more.
                   </div>
                   <div className="tier-groups">
                     {sortedTiers.map(([tierCode, tierData]) => {
-                      const allCats    = Object.entries(tierData.categories);
-                      const lvl3Cats   = allCats.filter(([, rows]) => rows.some((r: any) => r.level === 3)).map(([cat]) => cat);
+                      const allCats     = Object.entries(tierData.categories);
+                      const lvl3Cats    = allCats.filter(([, rows]) => rows.some((r: any) => r.level === 3)).map(([cat]) => cat);
                       const visibleCats = allCats.filter(([, rows]) => rows.some((r: any) => r.level <= (canLegacy ? 3 : 2)));
-                      const totalCount = Object.values(tierData.categories).flat().length;
+                      const totalCount  = Object.values(tierData.categories).flat().length;
                       const tcl = tierCode.toLowerCase();
                       return (
                         <details key={tierCode} className="tier-group" open>
@@ -909,32 +763,24 @@ export default async function PlayerSlugPage({
                           </summary>
                           <div className="tier-body">
                             {visibleCats
-                              .sort((a, b) => {
-                                const aSort = (a[1][0] as any)?.category_sort ?? 99;
-                                const bSort = (b[1][0] as any)?.category_sort ?? 99;
-                                return aSort - bSort;
-                              })
+                              .sort((a, b) => ((a[1][0] as any)?.category_sort ?? 99) - ((b[1][0] as any)?.category_sort ?? 99))
                               .map(([catName, rows]) => {
-                                const catIcon = (rows[0] as any)?.category_icon ?? null;
+                                const catIcon      = (rows[0] as any)?.category_icon ?? null;
                                 const filteredRows = (rows as any[]).filter((r: any) => r.level <= 2 || canLegacy);
-                                const grouped = groupAchievementRows(filteredRows);
+                                const grouped      = groupAchievementRows(filteredRows);
                                 return (
                                   <div key={catName}>
                                     <div className="cat-hdr">{catName}</div>
                                     {grouped.map((a: any, i: number) => (
                                       <div key={i} className="honor-row">
-                                        {catIcon && (
-                                          <div className={`honor-icon ic-${tcl}`}>{catIcon}</div>
-                                        )}
+                                        {catIcon && <div className={`honor-icon ic-${tcl}`}>{catIcon}</div>}
                                         <div className="honor-info">
                                           <div className="honor-name">{a.achievement_name}</div>
                                           {a.context && <div className="honor-sub">{a.context.replace(/\s*\(\d{4}\)$/, "").trim()}</div>}
                                           {a.years?.length > 0 && (
                                             <div className="honor-years">
                                               {a.years.map((yr: number) => (
-                                                <span key={yr} className={`yr yr-${tcl}`}>
-                                                  {yr}
-                                                </span>
+                                                <span key={yr} className={`yr yr-${tcl}`}>{yr}</span>
                                               ))}
                                             </div>
                                           )}
@@ -947,9 +793,7 @@ export default async function PlayerSlugPage({
                             {!canLegacy && lvl3Cats.length > 0 && (
                               <div className="honor-locked-row">
                                 <span className="honor-locked-icon">🔒</span>
-                                <span className="honor-locked-text">
-                                  {lvl3Cats.join(" · ")} — full detail available with The Legacy
-                                </span>
+                                <span className="honor-locked-text">{lvl3Cats.join(" · ")} — full detail available with The Legacy</span>
                                 <a href="/membership" className="honor-locked-cta">Upgrade →</a>
                               </div>
                             )}
@@ -996,12 +840,12 @@ export default async function PlayerSlugPage({
               </p>
               <div className="dim-statements">
                 {[
-                  { name: "Champion",  cls: "dc-champion",  desc: "Competitive excellence — championships, medals, and sustained on-court dominance." },
-                  { name: "Pioneer",   cls: "dc-pioneer",   desc: "Barrier-breaking and systemic firsts — opening doors that had never been opened." },
-                  { name: "Legend",    cls: "dc-legend",    desc: "Historical immortality — Hall of Fame, naming honors, all-time selections." },
-                  { name: "Advocate",  cls: "dc-advocate",  desc: "Service, character, and fighting for something beyond the game." },
-                  { name: "Sage",      cls: "dc-sage",      desc: "Coaching, leadership, and shaping the game after playing it." },
-                  { name: "Muse",      cls: "dc-muse",      desc: "Cultural presence, media impact, and inspiring the world beyond sport." },
+                  { name: "Champion", cls: "dc-champion", desc: "Competitive excellence — championships, medals, and sustained on-court dominance." },
+                  { name: "Pioneer",  cls: "dc-pioneer",  desc: "Barrier-breaking and systemic firsts — opening doors that had never been opened." },
+                  { name: "Legend",   cls: "dc-legend",   desc: "Historical immortality — Hall of Fame, naming honors, all-time selections." },
+                  { name: "Advocate", cls: "dc-advocate", desc: "Service, character, and fighting for something beyond the game." },
+                  { name: "Sage",     cls: "dc-sage",     desc: "Coaching, leadership, and shaping the game after playing it." },
+                  { name: "Muse",     cls: "dc-muse",     desc: "Cultural presence, media impact, and inspiring the world beyond sport." },
                 ].map(d => (
                   <div key={d.name} className="dim-stmt">
                     <span className={`dim-stmt-name ${d.cls}`}>{d.name}</span>
@@ -1009,16 +853,11 @@ export default async function PlayerSlugPage({
                   </div>
                 ))}
               </div>
-              {/* Story+: show teaser · Chronicle+: full bars coming · Public: locked */}
               {canAccess(memberTier, "story") ? (
                 <div className="dim-locked" style={{ borderTop: "1px solid var(--border)", paddingTop: "12px", marginTop: "4px", display: "flex", alignItems: "center", gap: "10px" }}>
                   <span style={{ fontSize: "13px", color: "var(--slate-soft)" }}>★ <strong>Dominant Dimension</strong></span>
                   {dominantDimension ? (
-                    <span style={{
-                      fontSize: "10px", fontWeight: 800, letterSpacing: "0.06em",
-                      textTransform: "uppercase", padding: "3px 12px", borderRadius: "12px",
-                      background: DIM_COLORS[dominantDimension] ?? "#888", color: "white"
-                    }}>
+                    <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", padding: "3px 12px", borderRadius: "12px", background: DIM_COLORS[dominantDimension] ?? "#888", color: "white" }}>
                       {dominantDimension}
                     </span>
                   ) : (
