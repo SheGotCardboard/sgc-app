@@ -23,10 +23,11 @@ export const metadata = {
 export default async function PantheonPage({
   searchParams,
 }: {
-  searchParams: { player?: string };
+  searchParams: Promise<{ player?: string }>;
 }) {
   const supabase = await createClient();
-  const initialSlug = searchParams?.player ?? null;
+  const resolvedParams = await searchParams;
+  const initialSlug = resolvedParams?.player ?? null;
 
   // ── Member tier ──────────────────────────────────────────────
   const {
@@ -42,7 +43,7 @@ export default async function PantheonPage({
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(1);
-    memberTier = (subRows?.[0]?.tier_slug as MemberTier) ?? "story";
+    memberTier = ((subRows?.[0] as any)?.tier_slug as MemberTier) ?? "story";
   }
 
   const canLegacy = canAccess(memberTier, "legacy");
