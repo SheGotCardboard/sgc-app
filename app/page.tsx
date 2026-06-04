@@ -3,6 +3,7 @@ import { getAccess } from "@/lib/access";
 import Nav from "@/components/layout/Nav";
 import CardImage from "@/components/card/CardImage";
 import Footer from "@/components/layout/Footer";
+import { editorialPlaceholder } from "@/lib/editorialPlaceholder";
 
 type EdItem = {
   ed_cal_id: string;
@@ -134,20 +135,14 @@ export default async function HomePage() {
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  const cardPlaceholder = (width: string = "33%") => (
-    <div style={{
-      width, aspectRatio: '5/7',
-      background: '#f5f0e8', borderRadius: '8px',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: '0 4px 12px rgba(61,57,53,0.08)',
-    }}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c4b8a8" strokeWidth="1.25">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <circle cx="8.5" cy="8.5" r="1.5"/>
-        <path d="m21 15-5-5L5 21"/>
-      </svg>
-    </div>
-  );
+  const cardStyle = {
+    width: '33%',
+    aspectRatio: '5/7',
+    objectFit: 'cover' as const,
+    objectPosition: 'center top',
+    borderRadius: '8px',
+    boxShadow: '0 8px 24px rgba(61,57,53,0.22)',
+  };
 
   const renderSideCard = (
     item: EdItem | null,
@@ -182,7 +177,8 @@ export default async function HomePage() {
     hrefPrefix: string,
     ctaText: string,
     emptyIcon: string,
-    emptyMsg: string
+    emptyMsg: string,
+    edType: "spotlight" | "celebrates" | "collect"
   ) => {
     if (!item) return (
       <div className="trio-current trio-empty-center">
@@ -191,24 +187,13 @@ export default async function HomePage() {
       </div>
     );
     const filename = filenameMap[item.story_card_id ?? ""];
+    const imgSrc = filename
+      ? `${STORAGE_URL}/${filename}`
+      : editorialPlaceholder(edType);
     return (
       <a href={`/${hrefPrefix}/${item.slug}`} className="trio-current" style={{textDecoration: 'none', color: 'inherit'}}>
         <div className="trio-current-image" data-card-id={item.story_card_id ?? undefined}>
-          {filename
-            ? <CardImage
-                src={`${STORAGE_URL}/${filename}`}
-                alt={item.title}
-                style={{
-                  width: '33%',
-                  aspectRatio: '5/7',
-                  objectFit: 'cover',
-                  objectPosition: 'center top',
-                  borderRadius: '8px',
-                  boxShadow: '0 8px 24px rgba(61,57,53,0.22)',
-                }}
-                placeholder={cardPlaceholder("33%")}
-              />
-            : cardPlaceholder("33%")}
+          <CardImage src={imgSrc} alt={item.title} style={cardStyle} />
         </div>
         <div className="trio-current-body">
           <div className="trio-current-meta">
@@ -312,7 +297,6 @@ export default async function HomePage() {
         .feat-sidebar { width: 130px; min-width: 130px; display: flex; flex-direction: column; }
         .feat-sidebar .tile-bar { width: 100%; }
         .feat-img { flex: 1; background: rgba(61,107,74,0.07); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .feat-num { font-family: var(--font-display); font-size: 72px; line-height: 1; color: rgba(61,107,74,0.12); user-select: none; }
         .feat-main { display: flex; flex-direction: column; flex: 1; }
         .feat-main .tile-bar { width: 100%; }
         .gate-banner { margin-top: 28px; padding: 24px 0 4px; border-top: 1px solid rgba(61,57,53,0.12); display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
@@ -375,7 +359,7 @@ export default async function HomePage() {
             </div>
             <div className="trio">
               {renderSideCard(spotlightPrev, "Previous", "var(--terracotta)", "spotlight", false)}
-              {renderCurrentCard(spotlightCurrent, "var(--terracotta)", "spotlight", "Read her story", "⭐", "First spotlight coming soon")}
+              {renderCurrentCard(spotlightCurrent, "var(--terracotta)", "spotlight", "Read her story", "⭐", "First spotlight coming soon", "spotlight")}
               {renderSideCard(spotlightNext, "Coming Soon", "var(--terracotta)", "spotlight", true)}
             </div>
             {!access.isAuthenticated && (
@@ -407,7 +391,7 @@ export default async function HomePage() {
             </div>
             <div className="trio">
               {renderSideCard(celebPrev, "Previous", "var(--lavender)", "celebrate", false)}
-              {renderCurrentCard(celebCurrent, "var(--lavender)", "celebrate", "Read the story", "🏆", "First celebration coming soon")}
+              {renderCurrentCard(celebCurrent, "var(--lavender)", "celebrate", "Read the story", "🏆", "First celebration coming soon", "celebrates")}
               {renderSideCard(celebNext, "Coming Soon", "var(--lavender)", "celebrate", true)}
             </div>
             {!access.isAuthenticated && (
@@ -443,15 +427,20 @@ export default async function HomePage() {
                   const isFeatured = i === 0;
                   const isNewest = item.ed_cal_id === collectNewestId;
                   const filename = filenameMap[item.story_card_id ?? ""];
+                  const imgSrc = filename
+                    ? `${STORAGE_URL}/${filename}`
+                    : editorialPlaceholder("collect");
                   if (isFeatured) {
                     return (
                       <a key={item.ed_cal_id} href={`/collect/${item.slug}`} className="teaser-tile tile-featured">
                         <div className="feat-sidebar">
                           <div className="tile-bar bar-g" />
                           <div className="feat-img" data-card-id={item.story_card_id ?? undefined}>
-                            {filename
-                              ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={{width: '80%', height: '90%', objectFit: 'cover', objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)'}} placeholder={cardPlaceholder("80%")} />
-                              : cardPlaceholder("80%")}
+                            <CardImage
+                              src={imgSrc}
+                              alt={item.title}
+                              style={{width: '80%', height: '90%', objectFit: 'cover', objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)'}}
+                            />
                           </div>
                         </div>
                         <div className="feat-main">
@@ -474,9 +463,11 @@ export default async function HomePage() {
                     <a key={item.ed_cal_id} href={`/collect/${item.slug}`} className="teaser-tile">
                       <div className="tile-bar bar-g" />
                       <div className="tile-image img-g" style={{position: 'relative'}} data-card-id={item.story_card_id ?? undefined}>
-                        {filename
-                          ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={item.title} style={{width: '65%', height: '90%', objectFit: 'cover', objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)'}} placeholder={<div className="guide-num">0{i + 1}</div>} />
-                          : <div className="guide-num">0{i + 1}</div>}
+                        <CardImage
+                          src={imgSrc}
+                          alt={item.title}
+                          style={{width: '65%', height: '90%', objectFit: 'cover', objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)'}}
+                        />
                         {isNewest && <div className="tile-new-badge">New</div>}
                       </div>
                       <div className="tile-body">

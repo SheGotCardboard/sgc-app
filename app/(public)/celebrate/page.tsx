@@ -3,6 +3,7 @@ import { getAccess } from "@/lib/access";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
 import CardImage from "@/components/card/CardImage";
+import { editorialPlaceholder } from "@/lib/editorialPlaceholder";
 
 const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/public/cards";
 const PAGE_SIZE = 12;
@@ -62,15 +63,13 @@ export default async function CelebrateIndexPage({
 
   const isClickable = (article: any) => new Date(article.publish_date) <= new Date();
 
-  const placeholderSVG = (
-    <div className="tile-ph">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <circle cx="8.5" cy="8.5" r="1.5"/>
-        <path d="m21 15-5-5L5 21"/>
-      </svg>
-    </div>
-  );
+  const cardImgStyle = {
+    width: '60%', height: '85%',
+    objectFit: 'cover' as const,
+    objectPosition: 'center top',
+    borderRadius: '6px',
+    boxShadow: '0 4px 12px rgba(61,57,53,0.2)',
+  };
 
   return (
     <div className="sgc-page">
@@ -91,7 +90,6 @@ export default async function CelebrateIndexPage({
         .si-tile-disabled { cursor: default; opacity: 0.75; }
         .si-tile-bar { height: 4px; background: var(--lavender); flex-shrink: 0; }
         .si-tile-image { height: 160px; background: rgba(155,136,196,0.08); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; flex-shrink: 0; }
-        .tile-ph { display: flex; align-items: center; justify-content: center; opacity: 0.2; color: var(--slate); }
         .si-badge { position: absolute; top: 10px; right: 10px; font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; z-index: 2; }
         .si-badge-coming { background: var(--slate); color: white; }
         .si-badge-members { background: var(--lavender); color: white; }
@@ -137,13 +135,15 @@ export default async function CelebrateIndexPage({
                 const badge = getBadge(article);
                 const clickable = isClickable(article);
                 const filename = filenameMap[article.story_card_id ?? ""];
-                const cardImgStyle = { width: '60%', height: '85%', objectFit: 'cover' as const, objectPosition: 'center top', borderRadius: '6px', boxShadow: '0 4px 12px rgba(61,57,53,0.2)' };
+                const imgSrc = filename
+                  ? `${STORAGE_URL}/${filename}`
+                  : editorialPlaceholder("celebrates");
 
                 const tileContent = (
                   <>
                     <div className="si-tile-bar" />
                     <div className="si-tile-image" data-card-id={article.story_card_id ?? undefined}>
-                      {filename ? <CardImage src={`${STORAGE_URL}/${filename}`} alt={article.title} style={cardImgStyle} placeholder={placeholderSVG} /> : placeholderSVG}
+                      <CardImage src={imgSrc} alt={article.title} style={cardImgStyle} />
                       {badge === "coming-soon" && <span className="si-badge si-badge-coming">Coming Soon</span>}
                       {badge === "members-only" && <span className="si-badge si-badge-members">Members Only</span>}
                     </div>

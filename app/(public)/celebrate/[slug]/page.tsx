@@ -5,6 +5,7 @@ import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
 import CardImage from "@/components/card/CardImage";
 import ArticleGallery from "@/components/editorial/ArticleGallery";
+import { editorialPlaceholder } from "@/lib/editorialPlaceholder";
 
 const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/public/cards";
 
@@ -47,7 +48,11 @@ export default async function CelebrateArticlePage({
     : { data: null };
   const card = cardRaw as any;
 
-  // ── Fetch gallery ────────────────────────────────────────
+  const ledeImgSrc = card?.filename
+    ? `${STORAGE_URL}/${card.filename}`
+    : editorialPlaceholder("celebrates");
+
+  // ── Gallery ──────────────────────────────────────────────
   const { data: gallerySimple } = await supabase
     .from("ed_gallery")
     .select("ed_gallery_id, display_order, card_id, ed_cal_id")
@@ -131,8 +136,6 @@ export default async function CelebrateArticlePage({
     month: "long", day: "numeric", year: "numeric"
   });
 
-  const placeholderDiv = <div className="art-ph" />;
-
   return (
     <div className="sgc-page">
       <Nav activePage="celebrates" />
@@ -140,24 +143,19 @@ export default async function CelebrateArticlePage({
         .art-wrap { max-width: 1200px; margin: 0 auto; padding: 56px 48px; }
         .art-layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
         @media (max-width: 900px) { .art-layout { grid-template-columns: 1fr; } .art-wrap { padding: 40px 24px; } }
-
         .art-kicker { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lavender); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .art-kicker::before { content: ''; width: 24px; height: 2px; background: var(--lavender); display: block; }
         .art-title { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); color: var(--slate); line-height: 1.1; margin-bottom: 8px; }
         .art-subtitle { font-size: 1rem; font-style: italic; color: var(--slate-soft); margin-bottom: 20px; line-height: 1.5; }
         .art-date { font-size: 0.82rem; color: var(--slate-ghost); margin-bottom: 28px; }
-
         .art-lede { display: flex; gap: 28px; align-items: flex-start; margin-bottom: 32px; }
         .art-lede-card { flex-shrink: 0; }
-        .art-ph { width: 160px; height: 224px; background: rgba(155,136,196,0.08); border-radius: 10px; }
         .art-excerpt { font-size: 1.05rem; line-height: 1.8; color: var(--slate-soft); font-style: italic; border-left: 3px solid var(--lavender); padding-left: 20px; margin: 0; flex: 1; }
         @media (max-width: 600px) { .art-lede { flex-direction: column; } }
-
         .art-body { font-size: 1rem; line-height: 1.85; color: var(--slate-soft); max-width: 680px; }
         .art-body p { margin-bottom: 1.6em; }
         .art-body h2 { font-family: var(--font-display); font-size: 1.6rem; color: var(--slate); margin: 2em 0 0.6em; line-height: 1.2; }
         .art-body h3 { font-family: var(--font-display); font-size: 1.2rem; color: var(--lavender); margin: 1.6em 0 0.5em; line-height: 1.2; }
-
         .art-gate { background: var(--lavender-mist); border-radius: 12px; padding: 32px; text-align: center; margin-top: 32px; }
         .art-gate-eyebrow { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lavender); margin-bottom: 10px; }
         .art-gate-title { font-family: var(--font-display); font-size: 1.6rem; color: var(--slate); margin-bottom: 8px; }
@@ -167,21 +165,18 @@ export default async function CelebrateArticlePage({
         .art-gate-primary { background: var(--lavender); color: white; }
         .art-gate-primary:hover { opacity: 0.9; }
         .art-gate-ghost { background: transparent; color: var(--slate-soft); border: 1px solid rgba(61,57,53,0.2); }
-
         .art-coming { text-align: center; padding: 60px 0; }
         .art-coming-icon { font-size: 2.5rem; margin-bottom: 16px; }
         .art-coming-title { font-family: var(--font-display); font-size: 1.6rem; color: var(--slate); margin-bottom: 8px; }
         .art-coming-desc { font-size: 0.9rem; color: var(--slate-ghost); }
-
         .art-sidebar { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 24px; }
         .art-sidebar-section { display: flex; flex-direction: column; }
         .art-sidebar-title { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--slate-ghost); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
         .art-sidebar-list { display: flex; flex-direction: column; gap: 12px; }
         .art-sidebar-item { display: flex; gap: 12px; text-decoration: none; color: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: white; transition: all 0.15s; }
         .art-sidebar-item:hover { border-color: var(--lavender); background: rgba(155,136,196,0.04); }
-        .art-sidebar-img-wrap { flex-shrink: 0; width: 56px; height: 78px; background: rgba(155,136,196,0.08); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .art-sidebar-img-wrap { flex-shrink: 0; width: 56px; height: 78px; border-radius: 6px; overflow: hidden; }
         .art-sidebar-img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
-        .art-sidebar-ph { opacity: 0.2; color: var(--slate); }
         .art-sidebar-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
         .art-sidebar-type { font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lavender); }
         .art-sidebar-name { font-family: var(--font-display); font-size: 13px; color: var(--slate); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -209,14 +204,11 @@ export default async function CelebrateArticlePage({
             {!isFuture && (
               <div className="art-lede">
                 <div className="art-lede-card">
-                  {card?.filename ? (
-                    <CardImage
-                      src={`${STORAGE_URL}/${card.filename}`}
-                      alt={article.title}
-                      style={{ width: '160px', height: '224px', objectFit: 'cover', objectPosition: 'center top', borderRadius: '10px', boxShadow: '0 8px 32px rgba(61,57,53,0.18)' }}
-                      placeholder={placeholderDiv}
-                    />
-                  ) : placeholderDiv}
+                  <CardImage
+                    src={ledeImgSrc}
+                    alt={article.title}
+                    style={{ width: '160px', height: '224px', objectFit: 'cover', objectPosition: 'center top', borderRadius: '10px', boxShadow: '0 8px 32px rgba(61,57,53,0.18)' }}
+                  />
                 </div>
                 {article.excerpt && <p className="art-excerpt">{article.excerpt}</p>}
               </div>
@@ -253,7 +245,6 @@ export default async function CelebrateArticlePage({
           {/* ── SIDEBAR ── */}
           <aside className="art-sidebar">
 
-            {/* Gallery — Chronicle+ */}
             {galleryCards.length > 0 && (
               <div className="art-sidebar-section">
                 <ArticleGallery
@@ -266,27 +257,19 @@ export default async function CelebrateArticlePage({
               </div>
             )}
 
-            {/* More celebrations */}
             {sidebarArticles.length > 0 && (
               <div className="art-sidebar-section">
                 <div className="art-sidebar-title">More Celebrations</div>
                 <div className="art-sidebar-list">
                   {sidebarArticles.map((s: any) => {
                     const sf = sidebarFilenameMap[s.story_card_id ?? ""];
+                    const sidebarSrc = sf
+                      ? `${STORAGE_URL}/${sf}`
+                      : editorialPlaceholder("celebrates");
                     return (
                       <a key={s.ed_cal_id} href={`/celebrate/${s.slug}`} className="art-sidebar-item">
                         <div className="art-sidebar-img-wrap">
-                          {sf ? (
-                            <img src={`${STORAGE_URL}/${sf}`} alt={s.title} className="art-sidebar-img" />
-                          ) : (
-                            <div className="art-sidebar-ph">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <path d="m21 15-5-5L5 21"/>
-                              </svg>
-                            </div>
-                          )}
+                          <img src={sidebarSrc} alt={s.title} className="art-sidebar-img" />
                         </div>
                         <div className="art-sidebar-body">
                           <span className="art-sidebar-type">Celebrates</span>
