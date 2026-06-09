@@ -379,15 +379,7 @@ export default function PlayerAccordion({
           overflow: hidden;
           box-shadow: 0 4px 20px rgba(0,0,0,0.06);
         }
-        .pa-disclaimer {
-          padding: 10px 24px;
-          background: rgba(201,146,26,0.05);
-          border-bottom: 1px solid rgba(201,146,26,0.15);
-          display: flex; align-items: center; gap: 10px;
-          font-size: 12px; color: var(--slate-soft); line-height: 1.5;
-        }
-        .pa-disclaimer strong { color: var(--slate); }
-        .pa-disclaimer a { color: var(--terracotta); font-weight: 700; cursor: pointer; border-bottom: 1px solid rgba(217,119,87,0.3); text-decoration: none; }
+       
         .pa-results-bar {
           padding: 7px 24px; border-bottom: 1px solid var(--border);
           display: flex; align-items: center; justify-content: space-between;
@@ -611,15 +603,6 @@ export default function PlayerAccordion({
 
       {/* ── DIRECTORY ── */}
       <div className="pa-directory">
-
-        <div className="pa-disclaimer">
-          <span>📋</span>
-          <span>
-            A curated snapshot — key achievements and a brief biography.{" "}
-            <strong>Full career histories, complete achievements by tier, and card galleries</strong>{" "}
-            are available with <a href="/membership">The Chronicle →</a>
-          </span>
-        </div>
 
         <div className="pa-results-bar">
           <span className="pa-results-count">

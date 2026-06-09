@@ -22,9 +22,8 @@ export default async function PlayerPage() {
       slug,
       profile_card_id,
       card_availability,
-      known_for_team:known_for_team_id (
-        team_name
-      )
+      known_for_team:known_for_team_id ( team_name ),
+      sport:primary_sport_id ( sport_name, icon )
     `)
     .eq("is_hidden", false)
     .eq("is_excluded", false)
@@ -46,38 +45,13 @@ export default async function PlayerPage() {
 
   const playerIds = players.map((p: any) => p.player_id);
 
-  // ── 2. Most recent team / league / sport ──────────────────
-  const { data: teamSeasonsRaw } = await supabase
-    .from("player_team_season")
-    .select(`
-      player_id,
-      team_season:team_season_id (
-        season:season_id (
-          season_year,
-          league:league_id (
-            league_name,
-            abbreviation,
-            sport:sport_id ( sport_name, icon )
-          )
-        ),
-        team:team_id ( team_name )
-      )
-    `)
-    .in("player_id", playerIds);
-
-  const teamSeasons = (teamSeasonsRaw ?? []) as any[];
-
-  // ── 3. Lookup tables ──────────────────────────────────────
+  // ── 2. Lookup tables ──────────────────────────────────────
   const [
     { data: tiersRaw },
     { data: categoriesRaw },
   ] = await Promise.all([
-    supabase
-      .from("achievement_tier")
-      .select("tier_code, tier_name, color_hex, display_order"),
-    supabase
-      .from("achievement_category")
-      .select("tier_code, category_code, category_name"),
+    supabase.from("achievement_tier").select("tier_code, tier_name, color_hex, display_order"),
+    supabase.from("achievement_category").select("tier_code, category_code, category_name"),
   ]);
 
   const tierMap: Record<string, { tier_name: string; display_color: string; sort_order: number }> =
@@ -95,7 +69,7 @@ export default async function PlayerPage() {
     ])
   );
 
-  // ── 4. Player achievements ────────────────────────────────
+  // ── 3. Player achievements ────────────────────────────────
   const { data: achievementsRaw } = await supabase
     .from("player_achievement")
     .select(`
@@ -112,57 +86,38 @@ export default async function PlayerPage() {
 
   const achievements = (achievementsRaw ?? []) as any[];
 
-  // ── 5. Profile card filenames ─────────────────────────────
+  // ── 4. Profile card filenames ─────────────────────────────
   const profileCardIds = players
     .map((p: any) => p.profile_card_id)
     .filter(Boolean) as string[];
 
   const { data: cardsRaw } = profileCardIds.length > 0
-    ? await supabase
-        .from("card")
-        .select("card_id, filename")
-        .in("card_id", profileCardIds)
+    ? await supabase.from("card").select("card_id, filename").in("card_id", profileCardIds)
     : { data: [] };
 
   const cardMap: Record<string, string> = Object.fromEntries(
     (cardsRaw ?? []).map((c: any) => [c.card_id, c.filename])
   );
 
-  // ── 5b. Card availability de_ids for placeholder resolution ──
-  // player.card_availability is TEXT storing the 'value' slug from card_availability_lkp
+  // ── 4b. Card availability lookup ─────────────────────────
   const availabilityValues = players
     .map((p: any) => p.card_availability)
     .filter(Boolean) as string[];
 
   const { data: availabilityRaw } = availabilityValues.length > 0
-    ? await supabase
-        .from("card_availability_lkp")
-        .select("value, de_id")
-        .in("value", availabilityValues)
+    ? await supabase.from("card_availability_lkp").select("value, de_id").in("value", availabilityValues)
     : { data: [] };
 
-  // Map: value slug → de_id (e.g. "needle-in-a-haystack" → "PCA01")
   const availabilityMap: Record<string, string> = Object.fromEntries(
     (availabilityRaw ?? []).map((a: any) => [a.value, a.de_id])
   );
 
-  // ── 6. Assemble ───────────────────────────────────────────
+  // ── 5. Assemble ───────────────────────────────────────────
   const assembled = players.map((player: any) => {
-    // Most recent season
-    const pts = teamSeasons
-      .filter((ts: any) => ts.player_id === player.player_id)
-      .sort((a: any, b: any) =>
-        (b.team_season?.season?.season_year ?? 0) -
-        (a.team_season?.season?.season_year ?? 0)
-      );
-    const mostRecent = pts[0] ?? null;
+    const sport = player.sport ?? {};
 
-    const knownForTeam =
-      player.known_for_team?.team_name ??
-      mostRecent?.team_season?.team?.team_name ??
-      null;
+    const knownForTeam = player.known_for_team?.team_name ?? null;
 
-    // Achievement chips
     const playerAchievements = achievements
       .filter((a: any) => a.player_id === player.player_id)
       .filter((a: any) => {
@@ -171,11 +126,8 @@ export default async function PlayerPage() {
       });
 
     const chipMap: Record<string, {
-      tier_code:     string;
-      tier_sort:     number;
-      display_color: string;
-      category_name: string;
-      count:         number;
+      tier_code: string; tier_sort: number; display_color: string;
+      category_name: string; count: number;
     }> = {};
 
     playerAchievements.forEach((a: any) => {
@@ -184,7 +136,6 @@ export default async function PlayerPage() {
       const key           = `${tier_code}-${category_code}`;
       const tier          = tierMap[tier_code];
       const cat_name      = categoryMap[key] ?? "—";
-
       if (!chipMap[key]) {
         chipMap[key] = {
           tier_code,
@@ -197,48 +148,41 @@ export default async function PlayerPage() {
       chipMap[key].count += 1;
     });
 
-    const chips = Object.values(chipMap).sort(
-      (a, b) => a.tier_sort - b.tier_sort
-    );
+    const chips = Object.values(chipMap).sort((a, b) => a.tier_sort - b.tier_sort);
 
-    // ── Card image resolution ─────────────────────────────
-    // 1. Has a profile card → use its filename
-    // 2. Has availability assessment → use pca de_id as filename
-    // 3. Neither → pca_null
     let card_filename: string;
     if (player.profile_card_id && cardMap[player.profile_card_id]) {
       card_filename = cardMap[player.profile_card_id];
     } else if (player.card_availability) {
       const deId = availabilityMap[player.card_availability];
-      card_filename = deId
-        ? `${deId.toLowerCase()}.webp`
-        : "pca_null.webp";
+      card_filename = deId ? `${deId.toLowerCase()}.webp` : "pca_null.webp";
     } else {
       card_filename = "pca_null.webp";
     }
 
     return {
-      player_id:                 player.player_id,
-      first_name:                player.first_name,
-      last_name:                 player.last_name,
-      preferred_name:            player.preferred_name,
-      birthdate:                 player.birthdate,
-      player_status:             player.player_status,
-      seo_description:           player.seo_description,
-      slug:                      player.slug,
-      sport_name:                mostRecent?.team_season?.season?.league?.sport?.sport_name ?? null,
-      sport_icon:                mostRecent?.team_season?.season?.league?.sport?.icon ?? null,
-      most_recent_league:        mostRecent?.team_season?.season?.league?.league_name ?? null,
-      most_recent_league_abbrev: mostRecent?.team_season?.season?.league?.abbreviation ?? null,
-      most_recent_team:          mostRecent?.team_season?.team?.team_name ?? null,
-      known_for_team:            knownForTeam,
-      card_filename,             // always a filename — never null
-      achievement_chips:         chips,
-      achievement_total:         playerAchievements.length,
+      player_id:       player.player_id,
+      first_name:      player.first_name,
+      last_name:       player.last_name,
+      preferred_name:  player.preferred_name,
+      birthdate:       player.birthdate,
+      player_status:   player.player_status,
+      seo_description: player.seo_description,
+      slug:            player.slug,
+      sport_name:      sport.sport_name ?? null,
+      sport_icon:      sport.icon ?? null,
+      known_for_team:  knownForTeam,
+      card_filename,
+      achievement_chips: chips,
+      achievement_total: playerAchievements.length,
+      // Legacy fields — null since we no longer fetch team seasons on index
+      most_recent_league:        null,
+      most_recent_league_abbrev: null,
+      most_recent_team:          null,
     };
   });
 
-  // ── 7. Sport list for dropdown ────────────────────────────
+  // ── 6. Sport list for dropdown ────────────────────────────
   const { data: sportsRaw } = await supabase
     .from("sport")
     .select("sport_name, sort_order, icon")

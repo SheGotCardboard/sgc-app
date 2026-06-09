@@ -7,6 +7,10 @@ import CardContextMenu from "@/components/card/CardContextMenu";
 export const metadata: Metadata = {
   title: "She Got Cardboard",
   description: "Collect Her Story.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default async function RootLayout({

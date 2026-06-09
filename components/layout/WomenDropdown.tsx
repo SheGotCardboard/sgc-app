@@ -1,8 +1,8 @@
 // components/layout/WomenDropdown.tsx
 // Client component — mirrors the pattern of AboutDropdown
 // "The Women" nav item with dropdown:
-//   · Player Directory  → /player
-//   · ★ SGC Pantheon    → /pantheon  (gold, special)
+//   · Directory      → /player
+//   · ★ SGC Pantheon → /pantheon  (gold, special)
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -52,7 +52,7 @@ export default function WomenDropdown({ activePage }: WomenDropdownProps) {
             className="sgc-nav-about-item"
             onClick={() => setOpen(false)}
           >
-            Player Directory
+            Directory
           </a>
           <div className="sgc-nav-about-divider" />
           <a

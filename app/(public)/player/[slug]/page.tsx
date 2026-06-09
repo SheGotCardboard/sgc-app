@@ -5,14 +5,12 @@ import Footer from "@/components/layout/Footer";
 
 const STORAGE_URL = "https://smgqjzddhzcpatwwqlci.supabase.co/storage/v1/object/public/cards";
 
-// ── Membership tier ───────────────────────────────────────────
 type MemberTier = "public" | "story" | "chronicle" | "legacy";
 function canAccess(userTier: MemberTier, required: MemberTier): boolean {
   const ORDER: MemberTier[] = ["public", "story", "chronicle", "legacy"];
   return ORDER.indexOf(userTier) >= ORDER.indexOf(required);
 }
 
-// ── Achievement level definitions (LOCKED) ───────────────────
 const LVL2_CATEGORIES = new Set([
   "I-C","I-D","I-E","II-A","II-B","II-D",
   "III-A","III-B","III-C","III-D",
@@ -24,7 +22,6 @@ function getAchievementLevel(tierCode: string, categoryCode: string): 1 | 2 | 3 
   return LVL2_CATEGORIES.has(key) ? 2 : 3;
 }
 
-// ── Zodiac from birthdate ─────────────────────────────────────
 function getZodiac(dateStr: string | null): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
@@ -77,7 +74,6 @@ export default async function PlayerSlugPage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  // ── Member tier ───────────────────────────────────────────
   const { data: { user } } = await supabase.auth.getUser();
 
   let memberTier: MemberTier = "public";
@@ -93,7 +89,7 @@ export default async function PlayerSlugPage({
     memberTier = tier ?? "story";
   }
 
-  // ── 1. Player ─────────────────────────────────────────────
+  // ── 1. Player — now includes primary_sport_id ─────────────
   const { data: playerRaw } = await supabase
     .from("player")
     .select(`
@@ -102,13 +98,19 @@ export default async function PlayerSlugPage({
       profile_card_id, card_availability,
       is_deceased, deceased_date, de_id,
       nationality,
-      known_for_team:known_for_team_id ( team_name )
+      known_for_team:known_for_team_id ( team_name ),
+      sport:primary_sport_id ( sport_name, icon )
     `)
     .eq("slug", slug)
     .single();
 
   const player = playerRaw as any;
   if (!player) notFound();
+
+  // Sport from primary_sport_id — simple and reliable
+  const primarySport     = player.sport ?? {};
+  const primarySportName = primarySport.sport_name ?? null;
+  const primarySportIcon = primarySport.icon ?? null;
 
   // ── 2. Team history ───────────────────────────────────────
   const { data: teamSeasonsRaw } = await supabase
@@ -302,23 +304,15 @@ export default async function PlayerSlugPage({
 
   const dimensionCounts: Record<string, number> = {};
   for (const a of achievements) {
-    if (a.dimension) {
-      dimensionCounts[a.dimension] = (dimensionCounts[a.dimension] ?? 0) + 1;
-    }
+    if (a.dimension) dimensionCounts[a.dimension] = (dimensionCounts[a.dimension] ?? 0) + 1;
   }
-  const dominantDimension = Object.entries(dimensionCounts)
-    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const dominantDimension = Object.entries(dimensionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
   const DIM_COLORS: Record<string, string> = {
-    Champion: "#B5333E",
-    Pioneer:  "#1A7A6D",
-    Legend:   "#6B3A7A",
-    Advocate: "#B57A14",
-    Sage:     "#3A4A8B",
-    Muse:     "#D4622A",
+    Champion: "#B5333E", Pioneer: "#1A7A6D", Legend: "#6B3A7A",
+    Advocate: "#B57A14", Sage: "#3A4A8B", Muse: "#D4622A",
   };
 
-  // Fix: category_sort included in type
   const chipMap: Record<string, { tier_code: string; display_color: string; category_name: string; count: number; tier_sort: number; category_sort: number }> = {};
   for (const a of achievements) {
     const key = `${a.tier_code}-${a.category_code}`;
@@ -390,20 +384,19 @@ export default async function PlayerSlugPage({
   const canChronicle = canAccess(memberTier, "chronicle");
   const canLegacy    = canAccess(memberTier, "legacy");
 
-  // ── Pantheon summary ──────────────────────────────────────
   const { data: pantheonRaw } = await supabase
     .from("pantheon_player_summary")
     .select("is_panthelete, total_score, dominant_dimension")
     .eq("player_id", player.player_id)
     .limit(1);
-  const pantheon = (pantheonRaw as any)?.[0] ?? null;
+  const pantheon     = (pantheonRaw as any)?.[0] ?? null;
   const isPanthelete = (pantheon as any)?.is_panthelete ?? false;
-  const hasScore = pantheon !== null;
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
   });
 
+  // ── Hero meta — now uses primary sport directly ───────────
   const heroMeta: string[] = [];
   const knownForTeam = player.known_for_team?.team_name ?? mostRecent?.team_name ?? null;
   if (knownForTeam) heroMeta.push(knownForTeam);
@@ -413,6 +406,9 @@ export default async function PlayerSlugPage({
     heroMeta.push(minYear === maxYear ? String(minYear) : `${minYear}–${maxYear}`);
   }
   heroMeta.push(statusLabel);
+
+  // Sport icon: primary sport first, fall back to most recent team season
+  const heroSportIcon = primarySportIcon ?? mostRecent?.sport_icon ?? "🏅";
 
   return (
     <div className="sgc-page">
@@ -543,7 +539,7 @@ export default async function PlayerSlugPage({
           {/* ── 1. HERO ── */}
           <div className="pp-hero">
             <div className="pp-avatar">
-              <span>{mostRecent?.sport_icon ?? "🏅"}</span>
+              <span>{heroSportIcon}</span>
             </div>
             <div className="pp-hero-info">
               <div className="pp-name">{displayName}</div>
@@ -599,6 +595,12 @@ export default async function PlayerSlugPage({
                 <div className="bio-text">{player.seo_description}</div>
               )}
               <div className="demo-card">
+                {primarySportName && (
+                  <div className="demo-row">
+                    <span className="demo-key">Sport</span>
+                    <span className="demo-val">{primarySportName}</span>
+                  </div>
+                )}
                 {player.birthdate && (
                   <div className="demo-row">
                     <span className="demo-key">Born</span>
@@ -742,10 +744,6 @@ export default async function PlayerSlugPage({
               <div className="pp-section-label">Achievements</div>
               {canChronicle ? (
                 <>
-                  <div className="ach-intro">
-                    <strong>The Chronicle</strong> — all achievements by tier with years and detail.{" "}
-                    <strong>The Legacy</strong> adds Achievements Level 3: the full dossier including All-Star selections, cultural honors, media presence, and more.
-                  </div>
                   <div className="tier-groups">
                     {sortedTiers.map(([tierCode, tierData]) => {
                       const allCats     = Object.entries(tierData.categories);

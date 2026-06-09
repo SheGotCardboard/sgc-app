@@ -333,7 +333,7 @@ export default async function HomePage() {
               <p className="hero-sub">The editorial home for celebrating women athletes through collecting. Join a community that collects with heart, celebrates with joy, and honors the women who made history.</p>
               <div className="hero-actions">
                 <a href="/membership" className="sgc-btn sgc-btn-primary">Join Our Community</a>
-                <a href="/player" className="sgc-btn sgc-btn-ghost">Meet the Players</a>
+                <a href="/player" className="sgc-btn sgc-btn-ghost">Meet the Women</a>
               </div>
             </div>
             <div className="hero-visual">
@@ -351,7 +351,7 @@ export default async function HomePage() {
           <div className="home-section">
             <div className="section-head">
               <div className="section-head-left">
-                <div className="section-kicker-pill kicker-s">⭐ Player Spotlight</div>
+                <div className="section-kicker-pill kicker-s">⭐ Spotlight</div>
                 <h2 className="section-head-title">Introducing&hellip;</h2>
                 <p className="section-head-desc">One athlete. Her story, her significance, the card that connects you to her legacy.</p>
               </div>
